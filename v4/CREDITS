@@ -1,0 +1,32 @@
+LITTLE WINDOWS V4 — AUDIO AND ART CREDITS
+
+Downloaded cat recordings
+-------------------------
+None. No third-party sound recordings were downloaded or bundled.
+The recording catalog was inaccessible from the development environment;
+the game uses original procedural synthesis instead.
+
+Original cat voices
+-------------------
+Source: src/cat-audio.ts
+Meows: harmonic/glottal voice with changing vowel formants, breath,
+micro-jitter and varied pitch contours, duration and mood.
+Purrs: filtered breath noise, low chest resonance, separate fast purr
+pulses and slower inhalation/exhalation envelopes.
+Chirps: short, voiced rising/falling syllables and double chirps.
+Hisses: soft, shaped, unvoiced airflow with a gradual attack.
+No external sample source or recording license applies to these sounds.
+
+Original score, city ambience, rain and care effects
+--------------------------------------------------
+Source: src/audio.ts
+Locally generated with Web Audio; no external sample recordings.
+
+Original pixel art and animation
+-------------------------------
+Sources: src/sprites.ts and src/room.ts. No third-party artwork or fonts.
+
+Runtime library
+---------------
+Phaser — https://github.com/phaserjs/phaser — MIT license.
+Phaser does not provide the game's cat sounds or artwork.

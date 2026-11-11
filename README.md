@@ -104,3 +104,35 @@ Plants derive their anchors from the supporting tabletop's height and footprint.
 The expanded apartment includes kitchen counters and dining space, a reading chair and bookcase, a bedroom and bedside plants, open passages, and resting/hiding spots. Original local Web Audio music, city ambience, purrs, meows and care sounds remain enabled after the first gesture, with a persistent mute button.
 
 V3 source is self-contained: `care.ts` (state, needs, economy, clock), `world.ts` (layout, collision, paths, window/surface geometry), `sprites.ts` (owner/cat atlases), `room.ts` (layered room and clock), `scene.ts` (owner control, care, cat behavior), `main.ts` (creation, controls, saves and dialogs), `audio.ts`, and `style.css`.
+
+## V4 · At your own pace
+
+V4 is self-contained at `/v4/` (`npm run dev:v4`) and uses `cozy-cat-apartment:v4`. V1–v3 remain playable with their sources and saves unchanged. The root build assembles all four releases.
+
+### A believable little home
+
+The floor plan is now a compact 832 × 592-unit apartment, rather than v3's sprawling four-room grid. The kitchen shares the common space; the reading corner belongs to the living area, and the bedroom has a real doorway. Furniture and its artwork were resized together: a two-seat sofa has a 160 × 64-unit footprint and 32-unit back height, with the adult about 78 units tall. The cat's body is about 30 units long. Navigation, collision, surface anchors, window masking and the shared game clock continue to use the same geometry.
+
+Both side-facing owner profiles explicitly paint the visible cheek, eye, nose and mouth after the hairstyle, so hair cannot erase facial features. A browser pixel regression checks both directions for every hair/skin/outfit combination.
+
+### A cat with their own plans
+
+The cat no longer follows owner movement. Independent grooming, stretching, exploring, window watching and naps have 12–25-second dwell times. Personality-driven social visits are considered roughly every 50–75 seconds and end after about 12 seconds; a moving owner never creates a pursuit. Calls are invitations with a cooldown, and sleeping, busy or sulking cats can decline. A visiting cat can rub against legs or choose a seated owner's lap, then leave again. Explicit care and toy interactions remain available. Meals and drinks are queued so filling the second bowl does not cancel the first invitation.
+
+### Clear objects and readable needs
+
+The small dots are gone. Nearby furniture and tools get a soft outline and a short label; hovering or keyboard focus reveals other objects. The nearest label includes an E/tap hint. Owner actions still happen in the room, after walking to the object. Small SVG thought bubbles show food, water, play, company, rest or space, with body language and optional Household meters providing context. A content cat may have no bubble at all.
+
+### A gentle first day, and a shape to each day
+
+A five-step, nonblocking guide teaches movement, bowls, observation and quiet company. It can be skipped and replayed from the always-available Help menu. Help includes controls, thought icons, body-language cues, consent and the cat's independent routines.
+
+Each day offers three optional bonding goals. Day one helps the cat settle in; later days focus on trust, reading cues, helpful care and peaceful moments. Goals award one bond point and two hearts once each. Bowls must actually help the cat to earn feeding goals; welcomed affection and real three-pounce play sessions count as bonding even if a need meter is full. Repeated clicks, replaying the tutorial and skipped goals do not duplicate rewards. Progress, tutorial status, bond and goal baselines are saved. Bedtime starts a new goal set while retaining bond. Earlier v4 checkpoint saves are upgraded without replacing the owner or cat.
+
+### Audio and credits
+
+The recording catalog request was blocked by the environment's network policy, so v4 uses the approved synthesis fallback. No cat recordings were downloaded or bundled. See [v4/CREDITS](v4/CREDITS) for the complete provenance statement.
+
+The new cat-voice engine layers glottal harmonics, moving vowel formants, breath, micro-jitter and varied pitch/duration for meows; separate purr pulses and breathing envelopes; single/double voiced chirps; and softly shaped warning hisses. Personality and mood change the voice. Hisses are reserved for overwhelmed refusals, with a ten-second cooldown. Visits and window watching can elicit chirps; food invitations can elicit meows. Music ducks under cat voices. The persistent master mute silences the entire mix, and sound starts only after a browser-permitted gesture.
+
+V4 adds `behavior.ts` (independence timing), `signals.ts` (object labels and need icons), `journey.ts` (tutorial/goals/bond), and `cat-audio.ts` (voice synthesis). Rule tests cover layout reachability, scale, progress migration, unique rewards and voice variation. Browser tests cover the profile pixels, independent visits/departures, labeled care, guide completion/skip/replay, daily bonding, rendered audio waveforms and cooldowns, mute persistence, mobile creation and save isolation. The shared Pages smoke test loads all four versions below a repository URL prefix.

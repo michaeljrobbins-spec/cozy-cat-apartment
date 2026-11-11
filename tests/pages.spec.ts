@@ -33,6 +33,9 @@ test('built site works below a GitHub Pages repository prefix',async({page})=>{
     await page.getByRole('button',{name:'Come on in'}).click();await expect(page.locator('#stage')).toHaveAttribute('data-ready','true');
     await page.goto(`http://127.0.0.1:${port}/cozy-cat-apartment/v3/`);
     await page.getByRole('button',{name:'Open the door',exact:false}).click();await expect(page.locator('#stage')).toHaveAttribute('data-ready','true');
+    await page.goto(`http://127.0.0.1:${port}/cozy-cat-apartment/v4/`);
+    await page.getByRole('button',{name:'Open the door',exact:false}).click();await expect(page.locator('#stage')).toHaveAttribute('data-ready','true');
+    const credits=await page.request.get(`http://127.0.0.1:${port}/cozy-cat-apartment/v4/CREDITS.txt`);expect(credits.status()).toBe(200);expect(await credits.text()).toContain('No third-party sound recordings');
     expect(errors).toEqual([]);expect(requests).toEqual([]);
     await page.setViewportSize({width:320,height:568});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   }finally{await new Promise<void>((done,reject)=>server.close(err=>err?reject(err):done()));}

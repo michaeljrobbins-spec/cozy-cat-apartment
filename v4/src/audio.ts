@@ -1,6 +1,7 @@
+import {CatVoice,type VoiceKind,type VoiceMood} from './cat-audio';
 /** Original, locally synthesized soundscape. No downloads or third-party samples. */
 export class Soundscape{
- private context?:AudioContext;private master?:GainNode;private ambience?:GainNode;private rainGain?:GainNode;
+ private voice?:CatVoice;private musicBus?:GainNode;private voiceMood:VoiceMood='content';private voicePersonality='Playful';private context?:AudioContext;private master?:GainNode;private ambience?:GainNode;private rainGain?:GainNode;
  private noise?:AudioBuffer;private musicTimer?:ReturnType<typeof setInterval>;private nextNote=0;private note=0;
  private muted=false;private started=false;private lastMeow=-100;private lastPurr=-100;
  constructor(private report:(state:string)=>void){}
@@ -8,7 +9,7 @@ export class Soundscape{
   this.muted=muted;
   try{
    if(!this.context){
-    const c=this.context=new AudioContext();this.master=c.createGain();this.master.gain.value=muted?0:.55;this.master.connect(c.destination);
+    const c=this.context=new AudioContext();this.master=c.createGain();this.master.gain.value=muted?0:.55;this.master.connect(c.destination);this.musicBus=c.createGain();this.musicBus.gain.value=.7;this.musicBus.connect(this.master);this.voice=new CatVoice(c,this.master);this.voice.setMood(this.voiceMood,this.voicePersonality);
     this.noise=c.createBuffer(1,c.sampleRate*6,c.sampleRate);const data=this.noise.getChannelData(0);let low=0;
     // A softly correlated noise bed avoids the harshness of white noise.
     for(let i=0;i<data.length;i++){low=.97*low+.03*(Math.random()*2-1);data[i]=low*3;}
@@ -25,7 +26,7 @@ export class Soundscape{
  setRain(value:boolean){if(this.context&&this.rainGain)this.rainGain.gain.setTargetAtTime(value?.13:0,this.context.currentTime,.8);}
  private tone(frequency:number,start:number,duration:number,volume:number,type:OscillatorType='sine',destination?:AudioNode){
   const c=this.context!;const osc=c.createOscillator(),gain=c.createGain();osc.type=type;osc.frequency.value=frequency;
-  gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(volume,start+.025);gain.gain.exponentialRampToValueAtTime(.0001,start+duration);osc.connect(gain).connect(destination||this.master!);osc.start(start);osc.stop(start+duration+.02);osc.onended=()=>{osc.disconnect();gain.disconnect();};
+  gain.gain.setValueAtTime(0,start);gain.gain.linearRampToValueAtTime(volume,start+.025);gain.gain.exponentialRampToValueAtTime(.0001,start+duration);osc.connect(gain).connect(destination||this.musicBus||this.master!);osc.start(start);osc.stop(start+duration+.02);osc.onended=()=>{osc.disconnect();gain.disconnect();};
  }
  private schedule(){
   const c=this.context;if(!c||c.state!=='running')return;
@@ -43,6 +44,7 @@ export class Soundscape{
  }
  effect(kind:string){
   const c=this.context;if(!c||c.state!=='running'||this.muted)return;
+  if(kind==='chirp'){this.vocal('chirp');return;}
   if(kind==='brush'||kind==='company'){this.purr();return;}
   if(kind==='meow'||kind==='refuse'){this.meow(kind==='refuse');return;}
   const now=c.currentTime;
@@ -54,18 +56,12 @@ export class Soundscape{
   if(kind==='complete'){this.tone(523.25,now,.65,.022);this.tone(659.25,now+.12,.75,.017);this.purr();return;}
   if(kind==='tool')this.tone(330,now,.1,.012,'triangle');
  }
- private purr(){
-  const c=this.context!;if(c.currentTime-this.lastPurr<1.8)return;this.lastPurr=c.currentTime;
-  const now=c.currentTime,source=c.createBufferSource(),filter=c.createBiquadFilter(),pulse=c.createOscillator(),pulseGain=c.createGain(),amplitude=c.createGain(),envelope=c.createGain();
-  source.buffer=this.noise!;source.loop=true;filter.type='lowpass';filter.frequency.value=230;pulse.frequency.value=26;pulse.type='sine';pulseGain.gain.value=.05;amplitude.gain.value=.07;
-  envelope.gain.setValueAtTime(.0001,now);envelope.gain.linearRampToValueAtTime(.7,now+.22);envelope.gain.setTargetAtTime(.0001,now+2.1,.35);
-  pulse.connect(pulseGain).connect(amplitude.gain);source.connect(filter).connect(amplitude).connect(envelope).connect(this.master!);source.start();pulse.start();source.stop(now+3.2);pulse.stop(now+3.2);source.onended=()=>{[source,filter,pulse,pulseGain,amplitude,envelope].forEach(n=>n.disconnect());};
+ setCatMood(mood:string,personality:string){this.voiceMood=mood==='hungry'||mood==='thirsty'?'request':mood==='curious'?'playful':['wary','overwhelmed','sleepy'].includes(mood)?mood as VoiceMood:'content';this.voicePersonality=personality;this.voice?.setMood(this.voiceMood,personality);}
+ private vocal(kind:VoiceKind){
+  const duration=this.voice?.speak(kind)||0,c=this.context;
+  if(duration&&c&&this.musicBus){this.musicBus.gain.cancelScheduledValues(c.currentTime);this.musicBus.gain.setTargetAtTime(.24,c.currentTime,.08);this.musicBus.gain.setTargetAtTime(.7,c.currentTime+duration+.15,.45);}
  }
- private meow(grumble=false){
-  const c=this.context!;if(c.currentTime-this.lastMeow<3)return;this.lastMeow=c.currentTime;const now=c.currentTime,duration=grumble?.32:.6;
-  const voice=c.createOscillator(),filter=c.createBiquadFilter(),gain=c.createGain();voice.type='sawtooth';voice.frequency.setValueAtTime(grumble?210:480,now);voice.frequency.exponentialRampToValueAtTime(grumble?180:720,now+.15);voice.frequency.exponentialRampToValueAtTime(grumble?140:360,now+duration);
-  filter.type='bandpass';filter.Q.value=2.5;filter.frequency.setValueAtTime(650,now);filter.frequency.linearRampToValueAtTime(grumble?500:1500,now+.17);filter.frequency.linearRampToValueAtTime(600,now+duration);
-  gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(grumble?.025:.045,now+.07);gain.gain.exponentialRampToValueAtTime(.0001,now+duration);voice.connect(filter).connect(gain).connect(this.master!);voice.start();voice.stop(now+duration+.02);voice.onended=()=>{voice.disconnect();filter.disconnect();gain.disconnect();};
- }
+ private purr(){this.vocal('purr');}
+ private meow(grumble=false){this.vocal(grumble&&this.voiceMood==='overwhelmed'?'hiss':'meow');}
  destroy(){clearInterval(this.musicTimer);void this.context?.close();}
 }

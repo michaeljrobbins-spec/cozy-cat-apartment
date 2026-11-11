@@ -71,7 +71,7 @@ export class Home extends Phaser.Scene{
  }
  private serveNext(){
   if(this.catTask||this.catArrived||this.hop||this.pounce||this.reserved||this.catSurface||this.isSulking())return false;
-  while(this.careQueue.length){const id=this.careQueue.shift()!;if(this.state.needs[id]>=90)continue;const f=LAYOUT.fixtures.find(f=>f.id===id)!;
+  while(this.careQueue.length){const id=this.careQueue.shift()!;if(this.state.needs[id]>=90)continue;const f=LAYOUT.fixtures.find(f=>f.id===id)!;this.hooks.sound(id==='food'?'meow':'chirp');
    this.goCat(f.approach,()=>{this.cat.direction='up';this.startCatTask(id==='food'?'eat':'drink',2700,()=>{this.finish(id==='food'?'eat':'drink');this.art.build(this.state);});});return true;
   }return false;
  }
@@ -119,7 +119,7 @@ export class Home extends Phaser.Scene{
  putDown(){if(this.ownerTask)return;this.tool='hands';this.toyUntil=0;this.pounces=0;}
  callCat(){
   if(this.lap){this.hooks.sound('company');return;}
-  if(this.isSulking()||this.catTask||this.hop||this.catSurface||this.time.now-this.lastCall<20000){this.hooks.sound('chirp');return;}
+  if(this.isSulking()){this.refuse();return;}if(this.catTask||this.hop||this.catSurface||this.time.now-this.lastCall<20000)return;
   this.startVisit();
  }
  private startVisit(){
@@ -136,8 +136,8 @@ export class Home extends Phaser.Scene{
  }
  keyboardToy(){const a=this.pounces*Math.PI*.7-.6;this.aimToy({x:this.owner.point.x+Math.cos(a)*85,y:this.owner.point.y+Math.sin(a)*65});}
  private freeNear(point:Point,nav:Navigator){return canStand(LAYOUT,point,nav.radius)?point:nav.nearest(point);}
- private mount(f:Fixture){
-  if(!f.surface)return;const from={...this.cat.point};this.catSurface=f;this.animateCat('pounce');this.hop={from,to:f.surface,elapsed:0,done:()=>{this.jumpDisplay=undefined;this.animateCat('sleep');this.catRest=11000;this.behavior='window nap';this.startCatTask('sleep',7000,()=>this.finish('sleep',false));}};
+ private mount(f:Fixture,watch=false){
+  if(!f.surface)return;const from={...this.cat.point};this.catSurface=f;this.animateCat('pounce');this.hop={from,to:f.surface,elapsed:0,done:()=>{this.jumpDisplay=undefined;if(watch){this.animateCat('sit');this.behavior='watching the window';this.catRest=22000;this.hooks.sound('chirp');}else{this.animateCat('sleep');this.catRest=11000;this.behavior='window nap';this.startCatTask('sleep',7000,()=>this.finish('sleep',false));}}};
  }
  private catDisplay():Point{if(this.hiding)return {x:this.cat.point.x,y:this.cat.point.y-28};if(this.jumpDisplay)return this.jumpDisplay;if(this.lap&&this.seat?.surface)return {x:this.seat.surface.x,y:this.seat.surface.y-17};return this.catSurface?.surface||this.cat.point;}
  private brain(dt:number,moving:boolean){
@@ -176,7 +176,7 @@ export class Home extends Phaser.Scene{
   if(mayVisit(this.state,this.time.now,this.nextVisit)&&!this.cat.path.length){this.startVisit();return;}
   this.catRest-=600;if(this.catRest<=0&&!this.cat.path.length){
    const pick=routine(this.choice++,this.state.personality);this.behavior=pick.kind;this.catRest=pick.seconds*1000;
-   if(pick.kind==='window'){const f=LAYOUT.fixtures.find(f=>f.id==='window-seat')!;this.goCat(f.approach,()=>{this.mount(f);this.catRest=22000;});return;}
+   if(pick.kind==='window'){const f=LAYOUT.fixtures.find(f=>f.id==='window-seat')!;this.goCat(f.approach,()=>{this.mount(f,true);this.catRest=22000;});return;}
    const destination=REST_SPOTS[this.choice%REST_SPOTS.length];this.goCat(destination,()=>{this.animateCat(pick.kind==='sleep'?'sleep':pick.kind==='stretch'?'stretch':pick.kind==='groom'?'groom':'sit');this.catRest=pick.seconds*1000;});
   }
  }

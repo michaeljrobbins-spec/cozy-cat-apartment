@@ -5,5 +5,8 @@ await cp('index.html', 'dist/index.html');
 for (const entry of await readdir('.', { withFileTypes: true })) {
   if (entry.isDirectory() && /^v\d+$/.test(entry.name)) {
     await cp(`${entry.name}/dist`, `dist/${entry.name}`, { recursive: true });
+    if ((await readdir(entry.name)).includes('CREDITS')) {
+      await cp(`${entry.name}/CREDITS`, `dist/${entry.name}/CREDITS.txt`);
+    }
   }
 }
