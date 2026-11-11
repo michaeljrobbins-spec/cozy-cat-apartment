@@ -22,3 +22,10 @@ test('cat has its own routine, accepts a short visit and leaves again',async({pa
  await page.getByRole('button',{name:'Call cat',exact:false}).click();await expect(stage).toHaveAttribute('data-behavior',/visiting|rubbing/,{timeout:8000});await expect(stage).toHaveAttribute('data-behavior','leaving',{timeout:16000});
  expect(canStand(LAYOUT,{x:Number(await stage.getAttribute('data-cat-x')),y:Number(await stage.getAttribute('data-cat-y'))},8)).toBe(true);await page.screenshot({path:'test-results/v4-independent-cat.png',fullPage:true});
 });
+
+test('nearby objects have labels and the cat shows needs rather than dots',async({page})=>{
+ const save=newCat();save.ownerPosition={x:592,y:432};await page.addInitScript(s=>localStorage.setItem('cozy-cat-apartment:v4',JSON.stringify(s)),save);await page.goto('/v4/');const stage=page.locator('#stage');await expect(stage).toHaveAttribute('data-ready','true');
+ await expect(page.locator('#object-food')).toHaveClass(/near/);await expect(page.locator('#object-food span')).toContainText('Food bowl');expect(await page.locator('#object-food').evaluate(el=>getComputedStyle(el,':after').content)).toBe('none');
+ await expect(page.locator('[data-thought="food"]')).toBeVisible();await page.getByRole('button',{name:'Refill food bowl',exact:true}).click();await expect(stage).toHaveAttribute('data-owner-pose','care');
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cozy-cat-apartment:v4')!).needs.food),{timeout:10000}).toBeGreaterThan(70);await expect(page.locator('[data-thought="food"]')).toHaveCount(0);await page.screenshot({path:'test-results/v4-labels-needs.png',fullPage:true});
+});

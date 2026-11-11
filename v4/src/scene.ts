@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import {OBJECT_NAMES} from './signals';
 import {routine,SOCIAL_SECONDS,VISIT_SECONDS,mayVisit,visitFinished} from './behavior';
 import {type Save,advanceClock,clockHands,complete,accepts,mood,clamp,tomorrow} from './care';
 import {LAYOUT,REST_SPOTS,OWNER_SCALE,CAT_SCALE,Navigator,moveWithCollision,canStand,distance,roomAt,CAT_RADIUS,OWNER_RADIUS,type Point,type Fixture} from './world';
@@ -15,7 +16,7 @@ export class Home extends Phaser.Scene{
  private owner!:Resident;private cat!:Resident;private ownerPose:OwnerPose='idle';private catPose:CatPose='sit';
  private ownerNav=new Navigator(LAYOUT,OWNER_RADIUS);private catNav=new Navigator(LAYOUT,CAT_RADIUS);
  private inputVector={x:0,y:0};private ownerTexture='';private saveElapsed=0;private snapshotElapsed=0;private footElapsed=0;
- private marker!:Phaser.GameObjects.Graphics;private effects!:Phaser.GameObjects.Graphics;private markerPoint?:Point;private markerLife=0;
+ private hovered?:string;private marker!:Phaser.GameObjects.Graphics;private effects!:Phaser.GameObjects.Graphics;private markerPoint?:Point;private markerLife=0;
  private ownerGoal?:Point;private catGoal?:Point;private ownerArrived?:()=>void;private catArrived?:()=>void;private ownerTask?:Timed;private catTask?:Timed;private tool:Tool='hands';
  private queuedWalk?:Point;private hiding?:Fixture;private lapTime=0;private seat?:Fixture;private catSurface?:Fixture;private lap=false;private hop?:Hop;private jumpDisplay?:Point;
  private lastCall=-60000;private nextVisit=40000;private visitUntil=0;private visitAnchor?:Point;private socialDone=false;private brainTime=0;private ownerIdle=0;private catRest=12000;private choice=0;private behavior='wandering';private reserved=false;
@@ -189,9 +190,15 @@ export class Home extends Phaser.Scene{
   this.snapshotElapsed+=dt;if(this.snapshotElapsed>90){this.snapshotElapsed=0;this.hooks.snapshot({owner:{...this.owner.point},cat:{...this.cat.point},ownerPose:this.ownerPose,catPose:this.catPose,ownerFrame:String(this.owner.sprite.frame.name),catFrame:String(this.cat.sprite.frame.name),clock:clockHands(this.state.minutes),minutes:this.state.minutes,room:roomAt(LAYOUT,this.owner.point),zoom:camera.zoom,left:camera.worldView.x,top:camera.worldView.y,width:this.scale.width,height:this.scale.height,seated:!!this.seat,catBehavior:this.behavior,tool:this.tool,pounces:this.pounces,ownerBusy:!!this.ownerTask,catDisplay:this.catDisplay()});}
  }
  private burst(p:Point,color:number,count=6){for(let i=0;i<count;i++)this.sparkles.push({x:p.x+(Math.random()-.5)*30,y:p.y-40-Math.random()*15,life:1,color});}
+ highlight(id?:string){this.hovered=id;}
  private drawEffects(dt:number){
   this.marker.clear();if(this.markerPoint&&this.markerLife>0){this.markerLife-=dt/900;this.marker.lineStyle(2,0xffefc7,this.markerLife*.7);this.marker.strokeEllipse(this.markerPoint.x,this.markerPoint.y,20,10);}
-  const g=this.effects;g.clear();this.sparkles=this.sparkles.filter(s=>s.life>0);for(const s of this.sparkles){s.life-=dt/1200;if(!this.state.reducedMotion)s.y-=dt/65;g.fillStyle(s.color,s.life);g.fillRect(s.x,s.y,4,4);g.fillRect(s.x+1,s.y-2,2,8);}
+  const g=this.effects;g.clear();
+  const nearby=LAYOUT.fixtures.filter(f=>(OBJECT_NAMES[f.id]||f.id==='tools')&&distance(this.owner.point,f.approach)<100&&!(this.seat===f));
+  const hover=this.hovered==='brush'||this.hovered==='wand'?'tools':this.hovered==='treat'?'coffee-table':this.hovered;
+  const fixtures=[...new Set([...nearby,...LAYOUT.fixtures.filter(f=>f.id===hover)])];
+  for(const f of fixtures){const r=f.rect;g.lineStyle(5,0xfff0c5,.13);g.strokeRoundedRect(r.x-3,r.y-f.height-3,r.w+6,r.h+f.height+6,4);g.lineStyle(1.5,0xffe6a6,.8);g.strokeRoundedRect(r.x-3,r.y-f.height-3,r.w+6,r.h+f.height+6,4);}
+this.sparkles=this.sparkles.filter(s=>s.life>0);for(const s of this.sparkles){s.life-=dt/1200;if(!this.state.reducedMotion)s.y-=dt/65;g.fillStyle(s.color,s.life);g.fillRect(s.x,s.y,4,4);g.fillRect(s.x+1,s.y-2,2,8);}
   if(this.seat?.surface&&!this.lap){const a=this.seat.surface;g.fillStyle(0x7f9272);g.fillRect(a.x-18,a.y-35,36,22);g.fillStyle(0xe7dab6);g.fillRect(a.x-15,a.y-32,29,16);g.fillStyle(0x9eab85);g.fillRect(a.x-1,a.y-32,2,16);}
   const hand={x:this.owner.point.x+(this.owner.direction==='left'?-22:22),y:this.owner.point.y-39};
   if(this.tool==='brush'){const stroke=this.ownerTask?.kind==='brush'?Math.sin(this.time.now/130)*7:0;g.fillStyle(0x846e4a);g.fillRect(hand.x,hand.y+stroke,4,20);g.fillStyle(0xb6b58e);g.fillRect(hand.x-6,hand.y-8+stroke,17,14);g.fillStyle(0x77835f);for(let i=0;i<4;i++)g.fillRect(hand.x-5+i*4,hand.y-9+stroke,2,5);}

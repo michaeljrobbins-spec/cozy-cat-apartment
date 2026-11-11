@@ -14,3 +14,8 @@ it('plants are supported by surfaces and independent routines last long enough t
  expect(SOCIAL_SECONDS.Shy).toBeGreaterThan(SOCIAL_SECONDS.Playful);expect(mayVisit(newCat(),20000,50000)).toBe(false);expect(visitFinished(13000,12000)).toBe(true);
 });
 it('uses its own validated save and shared clock',()=>{const s=newCat();expect(s.schema).toBe(4);expect(readSave(JSON.stringify(s))).toEqual(s);expect(()=>readSave(JSON.stringify({...s,schema:3}))).toThrow();expect(clockHands(485)).toEqual({minute:30,hour:242.5});});
+
+import {thoughts,OBJECT_NAMES} from './signals';
+it('makes the strongest needs visible without treating every movement as a social request',()=>{
+ const s=newCat();expect(thoughts(s,'sit','groom')).toContain('food');s.tension=80;expect(thoughts(s,'sit','sulking')).toEqual(['space']);s.tension=0;s.needs={food:95,water:95,energy:95,comfort:95,play:95};expect(thoughts(s,'sit','explore')).toEqual([]);expect(thoughts(s,'sit','visiting')).toEqual(['attention']);expect(thoughts(s,'sleep','napping')).toEqual(['nap']);expect(OBJECT_NAMES.food).toBe('Food bowl');
+});
