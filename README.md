@@ -140,3 +140,5 @@ V4 adds `behavior.ts` (independence timing), `signals.ts` (object labels and nee
 ## v5 · Little adventures
 
 Run `npm run dev:v5`. A separate v5 save keeps v1–v4 intact. The Bag shows owned toys, treats, furnishings, quantities and how to find locked items. New households receive three toys and three salmon bites. Each daily goal awards a crunchy star; completing a full set unlocks the feather teaser. Purchases and goal rewards display acquisition notices.
+
+v5 play: each toy has three catches per session. Ribbon/feather flicks and ball rolls use a forgiving timing band; the mouse rewards a soft midrange toss; the laser rewards controlled movement and ends in a tangible mouse catch; the box invites a timed hide-and-pounce. Drag/release in the room or use the play controls. E / Gentle assist supplies a safe direction. Personality gives starting interests; repeated successful sessions reveal favorites, while overusing a toy lowers interest. The first three sessions each day award bonus hearts and bond.

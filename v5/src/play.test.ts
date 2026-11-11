@@ -1,0 +1,7 @@
+import {expect,it} from 'vitest';
+import {newCat,readSave} from './care';
+import {grade,interest,favorite,rememberPlay,TOY_IDS,TOYS} from './play';
+import {LAYOUT,canStand,Navigator} from './world';
+it('six toys have reachable pickup spots and different skill rules',()=>{const nav=new Navigator(LAYOUT);for(const id of TOY_IDS){expect(canStand(LAYOUT,TOYS[id].approach),id).toBe(true);expect(nav.path({x:368,y:464},TOYS[id].approach).length).toBeGreaterThan(0);}expect(grade('feather',.5,80,0)).toBe(1);expect(grade('feather',.1,80,0)).toBeLessThan(1);expect(grade('mouse',.1,80,0)).toBe(1);expect(grade('mouse',.5,135,0)).toBeLessThan(1);expect(grade('laser',.5,80,.8)).toBe(1);expect(grade('laser',.5,80,.1)).toBeLessThan(1);});
+it('personality and play history reveal favorites while repetition loses interest',()=>{let s=newCat('Miso',0,'Shy');expect(interest(s,'box')).toBeGreaterThan(interest(s,'laser'));expect(favorite(s)).toBeUndefined();s=rememberPlay(s,'mouse',1);s=rememberPlay(s,'box',.4);s=rememberPlay(s,'mouse',1);expect(favorite(s)).toBe('mouse');const happy=interest(s,'mouse');for(let i=0;i<4;i++)s=rememberPlay(s,'mouse',1);expect(interest(s,'mouse')).toBeLessThan(happy);expect(readSave(JSON.stringify(s))).toEqual(s);});
+it('play bonding bonuses are capped per day and reset on a fresh day',()=>{let s=newCat();for(let i=0;i<8;i++)s=rememberPlay(s,'ball',1);expect(s.journey.bond).toBe(3);expect(s.hearts).toBe(15);s.day++;s=rememberPlay(s,'mouse',1);expect(s.journey.bond).toBe(4);expect(s.hearts).toBe(18);});
