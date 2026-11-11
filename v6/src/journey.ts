@@ -23,8 +23,6 @@ export function bondName(bond:number){return bond<6?'Getting acquainted':bond<15
 export function event(s:Save,kind:Event):{state:Save;messages:string[]}{
  const n=structuredClone(s);const j=n.journey;j.stats[kind]=(j.stats[kind]||0)+1;const messages:string[]=[];
  if(j.tutorial.status==='active'&&TUTORIAL[j.tutorial.step]?.event===kind){j.tutorial.step++;if(j.tutorial.step>=TUTORIAL.length){j.tutorial.status='complete';messages.push('You’ve found your own little rhythm. The guide is always in Help.');}}
- for(const g of goals(j))if(!j.completed.includes(g.id)&&goalProgress(j,g)>=g.target){j.completed.push(g.id);j.bond++;n.hearts+=2;n.treats.stars=(n.treats.stars||0)+1;messages.push(`${g.label} · +1 bond, +2 hearts, +1 crunchy star in Inventory`);}
- if(j.completed.length===3&&!n.owned.includes('feather')){n.owned.push('feather');messages.push('A whole day of little moments! Feather teaser added to Inventory.');}
  return {state:n,messages};
 }
 export function validJourney(j:unknown):j is Journey{

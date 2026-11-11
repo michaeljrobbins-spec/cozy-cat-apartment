@@ -48,6 +48,13 @@ export class Soundscape{
   if(kind==='brush'||kind==='company'){this.purr();return;}
   if(kind==='meow'||kind==='refuse'){this.meow(kind==='refuse');return;}
   const now=c.currentTime;
+  if(kind==='bowl-ring'){this.tone(620,now,1.1,.025,'sine');this.tone(1073,now,.65,.012,'sine');this.tone(1580,now,.35,.006,'sine');return;}
+  if(kind==='pour'){this.tone(330+Math.random()*180,now,.13,.016);this.tone(560+Math.random()*180,now+.07,.09,.01);return;}
+  if(kind==='mouse-bell'){this.tone(1320,now,.32,.018);this.tone(1760,now+.09,.2,.008);return;}
+  if(kind==='fabric'){const source=c.createBufferSource(),filter=c.createBiquadFilter(),gain=c.createGain();source.buffer=this.noise!;filter.type='lowpass';filter.frequency.value=900;gain.gain.setValueAtTime(.0001,now);gain.gain.linearRampToValueAtTime(.08,now+.08);gain.gain.exponentialRampToValueAtTime(.0001,now+.5);source.connect(filter).connect(gain).connect(this.master!);source.start(now);source.stop(now+.5);source.onended=()=>{source.disconnect();filter.disconnect();gain.disconnect();};return;}
+  if(kind==='sunbeam-win'){[392,523.25,659.25].forEach((f,i)=>this.tone(f,now+i*.28,1.8,.025));this.vocal('chirp');return;}
+  if(kind==='rattle-win'){this.tone(523.25,now,2,.025);this.tone(392,now+.35,2,.02);this.purr();return;}
+  if(kind==='mouse-win'){[440,659.25,587.33,783.99].forEach((f,i)=>this.tone(f,now+i*.14,.65,.02,'triangle'));this.vocal('chirp');return;}
   if(kind==='thunder'){const source=c.createBufferSource(),low=c.createBiquadFilter(),gain=c.createGain();source.buffer=this.noise!;low.type='lowpass';low.frequency.value=180;gain.gain.setValueAtTime(0,now);gain.gain.linearRampToValueAtTime(.18,now+1.5);gain.gain.exponentialRampToValueAtTime(.0001,now+5);source.connect(low).connect(gain).connect(this.master!);source.start(now);source.stop(now+5);source.onended=()=>{source.disconnect();low.disconnect();gain.disconnect();};return;}
   if(kind==='step'){this.tone(90+Math.random()*25,now,.06,.014,'triangle');return;}
   if(kind==='pounce'){this.tone(110,now,.1,.035,'triangle');this.tone(180,now+.035,.12,.012);return;}

@@ -4,7 +4,7 @@ import {type Layout,type Fixture,WINDOW,PANES,plantAnchor} from './world';
 export class ApartmentArt{
  private base:Phaser.GameObjects.Graphics;private furnishings:Phaser.GameObjects.Graphics[]=[];
  private exterior:Phaser.GameObjects.Graphics;private frame:Phaser.GameObjects.Graphics;private clock:Phaser.GameObjects.Graphics;private light:Phaser.GameObjects.Graphics;private dust:Phaser.GameObjects.Graphics;private maskShape:Phaser.GameObjects.Graphics;
- private roomLabels:Phaser.GameObjects.Text[]=[];private lastStyle='';private warmth=0;
+ private roomLabels:Phaser.GameObjects.Text[]=[];private lastStyle='';private lastPhotos='';private warmth=0;
  constructor(private scene:Phaser.Scene,public layout:Layout,state:Save){
   this.base=scene.add.graphics().setDepth(-100);this.exterior=scene.add.graphics().setDepth(-40);this.frame=scene.add.graphics().setDepth(-30);this.clock=scene.add.graphics().setDepth(-20);this.light=scene.add.graphics().setDepth(5000);this.dust=scene.add.graphics().setDepth(5001);
   this.maskShape=scene.make.graphics({x:0,y:0},false);this.maskShape.fillStyle(0xffffff);for(const p of PANES)this.maskShape.fillRect(p.x,p.y,p.w,p.h);this.exterior.setMask(this.maskShape.createGeometryMask());
@@ -28,7 +28,7 @@ export class ApartmentArt{
   for(const old of this.furnishings)old.destroy();this.furnishings=[];
   for(const f of this.layout.fixtures){const fg=this.scene.add.graphics().setDepth(f.rect.y+f.rect.h);this.drawFixture(fg,f,state);this.furnishings.push(fg);}
   const phone=this.scene.add.graphics().setDepth(433);phone.fillStyle(0x465755);phone.fillRoundedRect(179,352,14,25,3);phone.fillStyle(0xa6c6b9);phone.fillRect(181,355,10,17);this.furnishings.push(phone);
-  this.drawWindowFrame();this.lastStyle=JSON.stringify(state.equipped);
+  this.drawWindowFrame();this.lastStyle=JSON.stringify(state.equipped);this.lastPhotos=JSON.stringify(state.mystery.photos);
  }
  private extraFloors(g:Phaser.GameObjects.Graphics){
   g.fillStyle(0xdad8bd);g.fillRect(528,144,368,352);
@@ -42,7 +42,7 @@ export class ApartmentArt{
   const r=(a:number,b:number,c:number,d:number,col:number,alpha=1)=>{g.fillStyle(col,alpha);g.fillRect(a,b,c,d);};
   const ellipse=(cx:number,cy:number,ww:number,hh:number,col:number,a=1)=>{g.fillStyle(col,a);g.fillEllipse(cx,cy,ww,hh);};
   if(f.kind==='cabinet'){r(x,y-z,w,h+z,0x8b6c48);r(x+4,y-z+4,w-8,h+z-8,0xc6a97c);r(x+8,y-z+8,w-16,22,0x8c7150);r(x+8,y-z+35,w-16,29,0x8c7150);for(let yy=y-z+65;yy<y+h-6;yy+=6)r(x+8,yy,w-16,2,0x9d8058);r(x+18,y-z+14,13,8,0x82c7d0);r(x+18,y-z+43,12,14,0xd6b57e);r(x+5,y+h-4,5,9,0x6d5841);r(x+w-10,y+h-4,5,9,0x6d5841);return;}
-  if(f.kind==='fridge'){r(x,y-z,w,h+z,0x929d88);r(x+3,y-z+3,w-6,h+z-8,0xdde2c9);r(x+5,y-z+42,w-10,2,0xabb69b);r(x+7,y-z+52,3,26,0x89957d);r(x+15,y-z+60,26,34,0xf9e9bb);r(x+24,y-z+57,8,6,0xc88875);for(let i=0;i<3;i++)r(x+19,y-z+69+i*6,15-i*2,1,0xb5ac82);return;}
+  if(f.kind==='fridge'){r(x,y-z,w,h+z,0x929d88);r(x+3,y-z+3,w-6,h+z-8,0xdde2c9);r(x+5,y-z+42,w-10,2,0xabb69b);r(x+7,y-z+52,3,26,0x89957d);r(x+15,y-z+60,26,34,0xf9e9bb);r(x+24,y-z+57,8,6,0xc88875);for(let i=0;i<3;i++)r(x+19,y-z+69+i*6,15-i*2,1,0xb5ac82);for(let i=0;i<Object.keys(state.mystery.photos).length;i++){r(x+12+i*10,y-z+101,8,12,0xfcf2d6);r(x+13+i*10,y-z+102,6,7,[0x8db5ad,0x9eac7d,0xc79c7d][i]);}return;}
   if(f.kind==='wall'){r(x,y-z,w,h+z,0xbfb294);r(x,y-z,w,7,0xeee0bf);r(x,y+h-6,w,6,0x8c7959);return;}
   r(x+5,y+h-8,w,h>80?20:15,0x6c5843,.14);
   if(f.kind==='sofa'){
@@ -100,11 +100,11 @@ export class ApartmentArt{
   g.clear();g.lineStyle(8,0x8c7454);g.strokeRect(WINDOW.x-3,WINDOW.y-3,WINDOW.w+6,WINDOW.h+6);g.lineStyle(6,0xf1e4c2);g.strokeRect(WINDOW.x+3,WINDOW.y+3,WINDOW.w-6,WINDOW.h-6);g.fillStyle(0xf1e4c2);g.fillRect(PANES[0].x+PANES[0].w,43,12,82);g.fillRect(WINDOW.x+4,78,WINDOW.w-8,10);g.fillStyle(0xf5e5bf);g.fillRect(WINDOW.x-8,129,WINDOW.w+16,7);g.fillStyle(0xb3976d);g.fillRect(WINDOW.x-2,136,WINDOW.w+4,4);
  }
  update(time:number,delta:number,state:Save){
-  if(this.lastStyle!==JSON.stringify(state.equipped))this.build(state);
+  if(this.lastStyle!==JSON.stringify(state.equipped)||this.lastPhotos!==JSON.stringify(state.mystery.photos))this.build(state);
   const t=state.reducedMotion?0:time,g=this.exterior;g.clear();g.fillStyle((state.rain||state.adventure.active?.kind==='storm')?0xa5b8b6:state.minutes>=1050?0xb49eaa:0xb1cfca);g.fillRect(WINDOW.x,WINDOW.y,WINDOW.w,WINDOW.h);
   for(let i=0;i<9;i++){const x=WINDOW.x+4+i*30,y=92+(i%3)*8;g.fillStyle(i%2?0x819e99:0x95b0a4);g.fillRect(x,y,29,45);g.fillStyle(0xd7d8b8);g.fillRect(x+6,y+8,4,5);g.fillRect(x+18,y+8,4,5);}
   const birdX=WINDOW.x-20+(t/38)%(WINDOW.w+40),birdY=60+Math.sin(t/850)*9;g.fillStyle(0x5f7d76);g.fillRect(Math.round(birdX),Math.round(birdY),4,2);g.fillRect(Math.round(birdX)-4,Math.round(birdY)+(Math.floor(t/180)%2?-2:2),4,2);g.fillRect(Math.round(birdX)+4,Math.round(birdY)+(Math.floor(t/180)%2?-2:2),4,2);
-  if(state.adventure.active?.kind==='bird'){const x=244,y=109;g.fillStyle(0x6d8279);g.fillRect(x-8,y-7,16,9);g.fillRect(x+3,y-12,8,8);g.fillStyle(0xe6c18a);g.fillRect(x+11,y-9,4,3);g.fillStyle(0xe4d7b8);g.fillRect(x-5,y-3,9,4);g.fillStyle(0x455e54);g.fillRect(x+8,y-11,2,2);g.fillRect(x-11,y-3,5,3);g.fillRect(x-4,y+2,2,4);g.fillRect(x+2,y+2,2,4);}
+  if(state.adventure.active?.kind==='bird'||state.mystery.kind==='sunbeam'&&state.mystery.solved){const x=244,y=109;g.fillStyle(0x6d8279);g.fillRect(x-8,y-7,16,9);g.fillRect(x+3,y-12,8,8);g.fillStyle(0xe6c18a);g.fillRect(x+11,y-9,4,3);g.fillStyle(0xe4d7b8);g.fillRect(x-5,y-3,9,4);g.fillStyle(0x455e54);g.fillRect(x+8,y-11,2,2);g.fillRect(x-11,y-3,5,3);g.fillRect(x-4,y+2,2,4);g.fillRect(x+2,y+2,2,4);}
   if(state.rain||state.adventure.active?.kind==='storm'){g.lineStyle(1,0xe2e9dc,.45);for(let i=0;i<35;i++){const x=WINDOW.x+4+i*19%(WINDOW.w-8),y=44+(i*13+t/28)%80;g.lineBetween(x,y,x-2,y+7);}}
   this.drawClock(state.minutes);
   const light=this.light;light.clear();const target=state.minutes>990?Math.min(.24,(state.minutes-990)/1500):0;this.warmth=Phaser.Math.Linear(this.warmth,target,Math.min(1,delta/1500));light.fillStyle(0x655971,this.warmth);light.fillRect(0,0,this.layout.width,this.layout.height);

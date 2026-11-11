@@ -1,3 +1,4 @@
+import {act,CASE_INFO,type MysteryAction} from './mystery';
 import {PROPS,type Prop} from './props';
 import {nextMoment,startMoment,finishMoment,discover,unlock,DISCOVERIES,MOMENT_INFO,type Moment} from './adventure';
 import {TOYS,TOY_IDS,interest,favorite,timingAt,grade,rememberPlay,type ToyId} from './play';
@@ -9,8 +10,8 @@ import {type Save,advanceClock,clockHands,complete,accepts,mood,clamp,tomorrow} 
 import {LAYOUT,REST_SPOTS,OWNER_SCALE,CAT_SCALE,Navigator,routeStep,moveWithCollision,canStand,distance,roomAt,CAT_RADIUS,OWNER_RADIUS,type Point,type Fixture} from './world';
 import {ApartmentArt} from './room';
 import {installOwner,installCat,ownerKey,type Direction,type OwnerPose,type CatPose} from './sprites';
-export type Tool='hands'|'brush'|'wand';
-export interface Snapshot{view:Prop|'room';owner:Point;cat:Point;ownerPose:OwnerPose;catPose:CatPose;ownerFrame:string;catFrame:string;clock:{minute:number;hour:number};minutes:number;room:string;zoom:number;left:number;top:number;width:number;height:number;seated:boolean;catBehavior:string;tool:Tool;pounces:number;ownerBusy:boolean;catDisplay:Point;play:{id:ToyId;active:boolean;meter:number;rounds:number;ready:boolean;feedback:string;steady:number}}
+export type Tool='hands'|'brush'|'wand'|'cushion'|'mat'|'curtain';
+export interface Snapshot{pour:{armed:boolean;active:boolean;level:number};view:Prop|'room';owner:Point;cat:Point;ownerPose:OwnerPose;catPose:CatPose;ownerFrame:string;catFrame:string;clock:{minute:number;hour:number};minutes:number;room:string;zoom:number;left:number;top:number;width:number;height:number;seated:boolean;catBehavior:string;tool:Tool;pounces:number;ownerBusy:boolean;catDisplay:Point;play:{id:ToyId;active:boolean;meter:number;rounds:number;ready:boolean;feedback:string;steady:number}}
 export interface Hooks{ready:()=>void;change:(s:Save)=>void;snapshot:(s:Snapshot)=>void;sound:(kind:string)=>void;notice?:(message:string)=>void}
 interface Resident{point:Point;sprite:Phaser.GameObjects.Sprite;shadow:Phaser.GameObjects.Ellipse;path:Point[];direction:Direction;stalled:number;retries:number}
 interface Timed{elapsed:number;duration:number;done:()=>void;kind:string}
@@ -25,7 +26,7 @@ export class Home extends Phaser.Scene{
  private deferredCat?:{point:Point;done?:()=>void};private queuedWalk?:Point;private hiding?:Fixture;private lapTime=0;private seat?:Fixture;private catSurface?:Fixture;private lap=false;private hop?:Hop;private jumpDisplay?:Point;
  private careQueue:('food'|'water')[]=[];private lastCall=-60000;private nextVisit=40000;private visitUntil=0;private visitAnchor?:Point;private socialDone=false;private brainTime=0;private ownerIdle=0;private catRest=12000;private choice=0;private behavior='wandering';private reserved=false;
  private calmTime=0;private lastRub=-15000;private lastMeow=-15000;private expression='soft';
- private gifted=false;private adventureCheck=0;
+ private supports!:Phaser.GameObjects.Graphics;private mouseArt!:Phaser.GameObjects.Graphics;private caseRest=5000;private caseChoice=0;private payoffUntil=0;private mysteryPounce?:()=>void;private pourArmed=false;private pourActive=false;private pourLevel=0;private pourSound=0;private lastMouseDrag?:{point:Point;time:number};private gifted=false;private adventureCheck=0;
  private activeToy:ToyId='wand';private playStarted=0;private playActive=false;private playScore=0;private playFeedback='';private playSteady=0;private lastAim?:{point:Point;time:number};private toyMotion?:{from:Point;to:Point;start:number;duration:number};private roundQuality=0;private roundPending=false;private playCooldown=0;
  private toy:Point={x:430,y:620};private toyUntil=0;private toyReady=0;private toyRevision=0;private consumedToy=0;private pounces=0;private pounce?:{from:Point;to:Point;elapsed:number};
  private sparkles:{x:number;y:number;life:number;color:number}[]=[];private lastRefusal=-3000;
@@ -34,7 +35,7 @@ export class Home extends Phaser.Scene{
   installOwner(this,this.state.owner);installCat(this,this.state.coat);this.ownerTexture=ownerKey(this.state.owner);this.art=new ApartmentArt(this,LAYOUT,this.state);
   this.owner=this.resident(this.ownerNav.nearest(this.state.ownerPosition),this.ownerTexture,'idle-down-0',OWNER_SCALE);
   this.cat=this.resident(this.catNav.nearest({x:336,y:304}),`cat-${this.state.coat}`,'soft-sit-down-0',CAT_SCALE);
-  this.propArt=this.add.graphics().setDepth(6000);this.ground=this.add.graphics().setDepth(-50);this.marker=this.add.graphics().setDepth(4900);this.effects=this.add.graphics().setDepth(4901);this.animateOwner('idle');this.animateCat('sit');this.resize();this.scale.on('resize',()=>this.resize());this.nextVisit=this.playTime+SOCIAL_SECONDS[this.state.personality]*1000;this.hooks.ready();if(this.state.adventure.active)this.presentMoment(this.state.adventure.active.kind,false);
+  this.supports=this.add.graphics().setDepth(209);this.mouseArt=this.add.graphics().setDepth(703.9);this.propArt=this.add.graphics().setDepth(6000);this.ground=this.add.graphics().setDepth(-50);this.marker=this.add.graphics().setDepth(4900);this.effects=this.add.graphics().setDepth(4901);this.animateOwner('idle');this.animateCat('sit');this.resize();this.scale.on('resize',()=>this.resize());this.nextVisit=this.playTime+SOCIAL_SECONDS[this.state.personality]*1000;this.hooks.ready();this.setupCase();
  }
  private resident(point:Point,key:string,frame:string,scale:number):Resident{return {point:{...point},sprite:this.add.sprite(point.x,point.y,key,frame).setScale(scale).setOrigin(.5,.94),shadow:this.add.ellipse(point.x,point.y,31,12,0x584c37,.16),path:[],direction:'down',stalled:0,retries:0};}
  sync(state:Save){const decorChanged=JSON.stringify(this.state.equipped)!==JSON.stringify(state.equipped);this.state=state;if(this.art&&decorChanged)this.art.build(state);if(!this.owner)return;const key=ownerKey(state.owner);if(key!==this.ownerTexture){installOwner(this,state.owner);this.ownerTexture=key;this.owner.sprite.setTexture(key);this.animateOwner(this.ownerPose);}if(this.cat.sprite.texture.key!==`cat-${state.coat}`){installCat(this,state.coat);this.cat.sprite.setTexture(`cat-${state.coat}`);this.animateCat(this.catPose);}}
@@ -47,24 +48,26 @@ export class Home extends Phaser.Scene{
  private goCat(point:Point,done?:()=>void){if(this.hop){this.deferredCat={point,done};return;}if(this.catSurface||this.lap){const from=this.catDisplay();this.catSurface=undefined;this.lap=false;this.animateCat('pounce');this.hop={from,to:{...this.cat.point},elapsed:0,done:()=>{this.jumpDisplay=undefined;this.goCat(point,done);}};return;}this.cat.retries=0;this.cat.stalled=0;this.hiding=undefined;this.catGoal=point;this.cat.path=this.catNav.path(this.cat.point,point);this.catArrived=done;}
  approach(id:string){
   if(!this.activePlay||this.ownerTask)return;
+  if(this.caseApproach(id))return;
   if(id in PROPS){this.openProp(id as Prop);return;}if(id.startsWith('discover-')){this.discoverAt(id.slice(9));return;}if(id==='moment'){this.respondMoment();return;}if(id.startsWith('toy-')){this.equipToy(id.slice(4));return;}if(id==='cat'){this.visitCat();return;}if(id==='treat'){this.offerTreat();return;}
   if(id==='wand'){this.equipToy('wand');return;}if(id==='brush'){this.putDown();const tools=LAYOUT.fixtures.find(f=>f.id==='tools')!;this.goOwner(tools.approach,()=>{this.owner.direction='left';this.ownerTask={kind:'pickup',elapsed:0,duration:650,done:()=>{this.tool=id;this.hooks.sound('tool');}};});return;}
   const f=LAYOUT.fixtures.find(f=>f.id===id);if(!f)return;
   this.goOwner(f.approach,()=>this.useFixture(f));
  }
- interact(){if(!this.activePlay)return;if(this.seat){this.stand();return;}if(this.tool==='wand'){this.keyboardToy();return;}if(distance(this.owner.point,this.cat.point)<95){this.visitCat();return;}const f=this.nearestFixture();if(f&&distance(this.owner.point,f.approach)<110)this.approach(f.id==='tools'?'brush':f.id);}
+ interact(){if(!this.activePlay)return;if(this.tool==='curtain'){this.adjustCurtain((this.state.mystery.shade+.2)%1.01);return;}if(this.tool==='cushion'){this.placeSupport({x:272,y:176});return;}if(this.tool==='mat'){this.placeSupport({x:656,y:380});return;}if(this.pourArmed){this.startPour();return;}if(this.tool==='wand'&&this.state.mystery.kind==='mouse'&&!this.state.mystery.solved){this.pullMouse();return;}if(this.seat){this.stand();return;}if(this.tool==='wand'){this.keyboardToy();return;}const nearby=this.nearestFixture();if(nearby&&distance(this.owner.point,nearby.approach)<60){this.approach(nearby.id==='tools'?'brush':nearby.id);return;}if(distance(this.owner.point,this.cat.point)<95){this.visitCat();return;}const f=this.nearestFixture();if(f&&distance(this.owner.point,f.approach)<110)this.approach(f.id==='tools'?'brush':f.id);}
  private nearestFixture(){return LAYOUT.fixtures.filter(f=>!['wall','plantTable'].includes(f.kind)).sort((a,b)=>distance(this.owner.point,a.approach)-distance(this.owner.point,b.approach))[0];}
  get view(){return this.inspection||'room';}
- openProp(id:Prop){if(this.ownerTask)return;this.putDown();this.goOwner(PROPS[id].approach,()=>{this.inspection=id;this.setPaused(true);this.drawProp();this.hooks.sound('tool');});}
+ openProp(id:Prop){if(this.ownerTask)return;this.putDown();this.goOwner(PROPS[id].approach,()=>{if(id==='fridge')this.applyCase('read');this.inspection=id;this.setPaused(true);this.drawProp();this.hooks.sound('tool');});}
  closeProp(){this.inspection=undefined;this.propArt.clear();this.setPaused(false);this.resize();}
  private drawProp(){if(!this.inspection)return;const g=this.propArt,p=PROPS[this.inspection].point;g.clear();const r=(x:number,y:number,w:number,h:number,c:number)=>{g.fillStyle(c);g.fillRect(p.x+x,p.y+y,w,h);};
-  if(this.inspection==='cabinet'){r(-148,-170,296,340,0x806244);r(-140,-162,280,324,0xc4a274);r(-134,-151,268,297,0xa98860);for(let i=0;i<4;i++){r(-133,-110+i*73,266,5,0xe1c392);r(-133,-105+i*73,266,4,0x785d41);}r(-154,-160,8,320,0xd6b889);r(146,-160,8,320,0xd6b889);}
+  if(this.inspection==='cabinet'){r(-148,-170,296,340,0x806244);r(-140,-162,280,324,0xc4a274);r(-134,-151,268,297,0xa98860);for(let i=0;i<5;i++){r(-133,-110+i*58,266,5,0xe1c392);r(-133,-105+i*58,266,4,0x785d41);}r(-154,-160,8,320,0xd6b889);r(146,-160,8,320,0xd6b889);}
   if(this.inspection==='fridge'){r(-147,-172,294,344,0xa5b198);r(-140,-168,280,336,0xe5e7d0);r(-136,-160,5,316,0xf8f6e7);r(125,-40,6,68,0x89967f);r(-117,-129,230,253,0xd9cfaa);r(-120,-133,230,253,0xfff1c9);r(-15,-144,29,18,0xc98878);}
   if(this.inspection==='phone'){g.fillStyle(0x394e4c);g.fillRoundedRect(p.x-137,p.y-175,274,350,18);r(-125,-150,250,300,0xf7f2df);r(-21,-165,42,4,0x7c9690);g.lineStyle(2,0x9cb3a5);g.strokeCircle(p.x,p.y+164,6);}
   if(this.inspection==='clock'){g.fillStyle(0x92714f);g.fillCircle(p.x,p.y,115);g.fillStyle(0xf4e8c8);g.fillCircle(p.x,p.y,104);const hands=clockHands(this.state.minutes);for(let i=0;i<12;i++){const a=i*Math.PI/6;g.fillStyle(0x89977a);g.fillRect(p.x+Math.sin(a)*91-2,p.y-Math.cos(a)*91-2,4,4);}for(const [angle,len,width]of [[hands.hour,54,6],[hands.minute,85,3]]){const a=angle*Math.PI/180;g.lineStyle(width,0x637259);g.lineBetween(p.x,p.y,p.x+Math.sin(a)*len,p.y-Math.cos(a)*len);}g.fillStyle(0x637259);g.fillCircle(p.x,p.y,5);}
  }
  private useFixture(f:Fixture){
   this.putDown();
+  if(f.id==='water'&&this.state.mystery.kind==='rattle'&&!this.state.mystery.solved){this.armPour();return;}
   if(f.id==='food'||f.id==='water'){
    this.owner.direction='up';this.ownerTask={kind:f.id,elapsed:0,duration:1450,done:()=>{
     this.state={...this.state,[f.id]:3};this.record(f.id==='food'?'refillFood':'refillWater');this.art.build(this.state);this.hooks.sound('refill');this.burst({x:f.rect.x+f.rect.w/2,y:f.rect.y+16},0xe7cea0);
@@ -79,14 +82,14 @@ export class Home extends Phaser.Scene{
    this.ownerTask={kind:'invite',elapsed:0,duration:900,done:()=>{if(!this.isSulking())this.goCat(f.approach,()=>this.mount(f));else this.refuse();}};return;
   }
   if(f.kind==='bed'){
-   this.ownerTask={kind:'rest',elapsed:0,duration:1800,done:()=>{this.state=tomorrow(this.state);this.changed();this.hooks.sound('morning');}};return;
+   this.ownerTask={kind:'rest',elapsed:0,duration:1800,done:()=>{this.state=tomorrow(this.state);this.pourArmed=false;this.pourActive=false;this.caseRest=5000;this.setupCase();this.changed();this.hooks.sound('morning');}};return;
   }
   if(f.kind==='tools'){this.approach('brush');return;}
   this.ownerTask={kind:'pause',elapsed:0,duration:1000,done:()=>{this.hooks.sound('company');}};
  }
  private serveNext(){
   if(this.catTask||this.catArrived||this.hop||this.pounce||this.reserved||(this.catSurface&&this.catPose==='sleep')||this.isSulking())return false;
-  while(this.careQueue.length){const id=this.careQueue.shift()!;if(this.state.needs[id]>=90)continue;const f=LAYOUT.fixtures.find(f=>f.id===id)!;this.hooks.sound(id==='food'?'meow':'chirp');
+  while(this.careQueue.length){const id=this.careQueue.shift()!;if(this.state.mystery.kind==='rattle'&&!this.state.mystery.solved&&id==='water')continue;if(this.state.needs[id]>=90)continue;const f=LAYOUT.fixtures.find(f=>f.id===id)!;this.hooks.sound(id==='food'?'meow':'chirp');
    this.goCat(f.approach,()=>{this.cat.direction='up';this.startCatTask(id==='food'?'eat':'drink',2700,()=>{this.finish(id==='food'?'eat':'drink');this.art.build(this.state);});});return true;
   }return false;
  }
@@ -108,6 +111,7 @@ export class Home extends Phaser.Scene{
   const toy=TOYS[id as ToyId];this.putDown();this.goOwner(toy.approach,()=>{this.ownerTask={kind:'pickup',elapsed:0,duration:500,done:()=>{this.activeToy=id as ToyId;this.state.equipped.toy=id;this.tool='wand';this.hooks.sound('tool');this.beginPlay();this.changed();}};});
  }
  private beginPlay(){
+  if(this.state.mystery.kind==='mouse'&&!this.state.mystery.solved){this.playActive=false;this.playFeedback='Follow the gaze. Hook the mouse with the wand and ease it onto clear floor.';return;}
   if(this.catTask||this.catPose==='sleep'){this.playFeedback='A little nap first. Try again when your cat wakes.';return;}
   if(!accepts(this.state,'play')){this.playFeedback='A little rest or space first.';this.refuse();return;}
   if(interest(this.state,this.activeToy)<.36){this.playFeedback='A glance, then a turned back. Try a different toy.';this.cat.direction=this.direction(this.cat.point.x-this.owner.point.x,this.cat.point.y-this.owner.point.y);this.animateCat('groom');this.hooks.sound('meow');return;}
@@ -157,6 +161,48 @@ export class Home extends Phaser.Scene{
  record(kind:Event){const result=journeyEvent(this.state,kind);this.state=result.state;this.changed();for(const message of result.messages)this.hooks.notice?.(message);}
  guide(id?:string){this.guideTarget=id;}
 
+ private applyCase(action:MysteryAction,value=0){const result=act(this.state,action,value);this.state=result.state;this.changed();if(result.message)this.hooks.notice?.(result.message);if(result.success)this.casePayoff();return result.success;}
+ startDay(){this.setupCase();}
+ private setupCase(){this.putDown();this.catArrived=undefined;this.catTask=undefined;this.reserved=false;this.visitUntil=0;this.caseRest=5000;if(this.state.mystery.solved)return;const kind=this.state.mystery.kind;this.goCat(kind==='sunbeam'?{x:304,y:240}:kind==='rattle'?{x:656,y:448}:{x:704,y:640},()=>{this.cat.direction=kind==='mouse'?'right':'up';this.animateCat('sit');});}
+ private caseApproach(id:string){const m=this.state.mystery;if(m.solved)return false;
+  if(id==='cat'&&this.tool==='hands'){this.reserved=true;this.cat.path=[];this.catArrived=undefined;this.goOwner(this.freeNear({x:this.cat.point.x-42,y:this.cat.point.y+12},this.ownerNav),()=>{this.ownerTask={kind:'company',elapsed:0,duration:m.patience===0?2100:900,done:()=>{this.reserved=false;this.applyCase(m.patience===0?'reassure':'cat');this.hooks.sound('company');}};});return true;}
+  if(id==='curtain'){this.goOwner({x:384,y:240},()=>{this.putDown();this.tool='curtain';this.applyCase('seat');});return true;}
+  if(id==='window-seat'&&m.kind==='sunbeam'){if(this.tool==='cushion'){this.placeSupport({x:272,y:176});return true;}this.goOwner({x:272,y:240},()=>{this.applyCase('seat');this.applyCase('invite');this.hooks.sound('chirp');});return true;}
+  if(id==='water'&&this.tool==='mat'){this.placeSupport({x:656,y:380});return true;}
+  if(id==='bed-clue'&&m.kind==='mouse'&&!m.mouse.recovered){this.goOwner({x:688,y:640},()=>{this.applyCase('bed');this.hooks.sound('mouse-bell');if(this.tool==='wand')this.pullMouse();});return true;}
+  return false;
+ }
+ takeSupport(id:'sage'|'felt'){if(!this.state.owned.includes(id)||this.ownerTask)return;this.goOwner(PROPS.cabinet.approach,()=>{this.tool=id==='sage'?'cushion':'mat';this.hooks.sound('tool');this.hooks.notice?.(id==='sage'?'Carry the cushion to a welcoming perch. Tap or drop it on the window seat.':'Carry the felt mat to the ringing bowl. Tap or drop it underneath.');});}
+ placeSupport(point:Point){const tool=this.tool;if(tool!=='cushion'&&tool!=='mat')return;const correct=tool==='cushion'?distance(point,{x:272,y:176})<65:distance(point,{x:656,y:380})<52;
+  if(!correct){this.applyCase(tool==='cushion'?'cushion':'mat',0);return;}const target=tool==='cushion'?{x:272,y:240}:{x:656,y:416};this.goOwner(target,()=>{this.ownerTask={kind:'place',elapsed:0,duration:800,done:()=>{this.applyCase(tool==='cushion'?'cushion':'mat',1);this.tool='hands';this.hooks.sound('fabric');}};});}
+ adjustCurtain(value:number){if(this.tool!=='curtain'||this.ownerTask)return;this.applyCase('shade',value);}
+ private armPour(){this.applyCase('bowl');this.hooks.sound(this.state.mystery.mat?'pour':'bowl-ring');this.pourArmed=true;this.pourLevel=0;this.hooks.notice?.('Hold the pour action, then release at the gold mark on the jug.');}
+ startPour(){if(!this.pourArmed||this.ownerTask||this.pourActive)return;this.pourActive=true;this.pourLevel=0;this.owner.direction='up';this.animateOwner('care');}
+ releaseCare(){if(!this.pourActive)return;this.pourActive=false;this.state.water=3;this.art.build(this.state);const won=this.applyCase('pour',this.pourLevel);if(won)this.pourArmed=false;else this.hooks.sound(this.state.mystery.mat?'splash':'bowl-ring');}
+ dragMouse(point:Point){const m=this.state.mystery;if(m.kind!=='mouse'||m.solved||this.tool!=='wand'||distance(this.owner.point,{x:688,y:640})>120)return;const now=this.playTime;
+  if(!m.mouse.hooked){if(distance(point,m.mouse)<25&&m.clues.includes('bed')){m.mouse.hooked=true;this.lastMouseDrag={point,time:now};this.hooks.sound('mouse-bell');}return;}
+  const speed=this.lastMouseDrag?distance(point,this.lastMouseDrag.point)/Math.max(.016,(now-this.lastMouseDrag.time)/1000):0;this.lastMouseDrag={point,time:now};if(speed>300){m.mouse.hooked=false;this.applyCase('recover',0);return;}
+  if(distance(point,this.owner.point)>150)return;m.mouse.x=point.x;m.mouse.y=point.y;
+  if(canStand(LAYOUT,point,CAT_RADIUS)&&point.x<742){m.mouse.hooked=false;this.applyCase('recover',1);}
+ }
+ pullMouse(){const m=this.state.mystery;if(m.kind!=='mouse'||m.solved||this.tool!=='wand')return;if(!m.clues.includes('bed')){this.hooks.notice?.('Where is that tiny bell coming from? Follow your cat’s gaze.');return;}if(distance(this.owner.point,{x:688,y:640})>85){this.goOwner({x:688,y:640},()=>{});return;}this.hooks.sound('mouse-bell');m.mouse.x-=12;m.mouse.y-=2;if(m.mouse.x<738)this.applyCase('recover',1);else this.changed();}
+ private casePayoff(){this.pourActive=false;this.pourArmed=false;this.tool='hands';this.playActive=false;this.caseRest=15000;this.payoffUntil=this.playTime+11000;this.catTask=undefined;this.catArrived=undefined;this.reserved=false;const kind=this.state.mystery.kind;this.hooks.sound(`${kind}-win`);
+  if(kind==='sunbeam'){const f=LAYOUT.fixtures.find(f=>f.id==='window-seat')!;this.goCat(f.approach,()=>this.mount(f,true));this.hooks.sound('chirp');}
+  else if(kind==='rattle'){const f=LAYOUT.fixtures.find(f=>f.id==='water')!;this.state.water=3;this.goCat(f.approach,()=>{this.cat.direction='up';this.startCatTask('drink',2600,()=>{this.finish('drink');this.goCat(this.freeNear({x:this.owner.point.x-35,y:this.owner.point.y+12},this.catNav),()=>this.startCatTask('rub',1800,()=>{}));});});}
+  else{const target=this.freeNear(this.state.mystery.mouse,this.catNav);this.goCat(this.freeNear({x:target.x-26,y:target.y},this.catNav),()=>{this.animateCat('pounce');this.pounce={from:{...this.cat.point},to:target,elapsed:0};this.mysteryPounce=()=>{this.gifted=true;this.visitUntil=this.playTime+9000;this.goCat(this.freeNear({x:this.owner.point.x+25,y:this.owner.point.y+12},this.catNav),()=>this.startCatTask('rub',2200,()=>{}));this.hooks.sound('company');};});}
+ }
+ private caseBrain(){if(this.payoffUntil>this.playTime)return true;const m=this.state.mystery;if(m.solved||this.playActive)return false;this.caseRest-=600;if(this.caseRest>0||this.pourActive)return true;this.caseRest=7000;
+  const kind=m.kind;this.cat.direction=kind==='mouse'?'right':'up';this.behavior=m.patience===0?'asking for a quiet moment':kind==='sunbeam'?'squinting at the window':kind==='rattle'?'listening to the bowl':'searching for a mouse';
+  if(m.patience===0){if(!this.cat.path.length)this.animateCat('groom');return true;}
+  const points=kind==='sunbeam'?[{x:304,y:240},{x:368,y:304}]:kind==='rattle'?[{x:656,y:432},{x:704,y:464}]:[{x:704,y:640},{x:720,y:704}];const point=points[this.caseChoice++%2];this.goCat(point,()=>{this.cat.direction=kind==='mouse'?'right':'up';this.animateCat(kind==='mouse'?'stretch':'sit');});if(kind==='rattle'&&!m.mat)this.hooks.sound('bowl-ring');else if(kind==='mouse')this.hooks.sound('mouse-bell');return true;
+ }
+ private drawCase(){const m=this.state.mystery,g=this.effects;if(m.kind==='sunbeam'||m.photos.sunbeam){const shade=m.kind==='sunbeam'?m.shade:.6;g.fillStyle(0xc7967c,.95);g.fillRect(176,40,13,88);g.fillRect(419-Math.round(shade*180),40,13+Math.round(shade*180),88);g.lineStyle(1,0xe0baa0,.75);for(let x=425-Math.round(shade*180);x<432;x+=7)g.lineBetween(x,43,x,124);if(!m.solved&&m.kind==='sunbeam'){this.ground.fillStyle(0xffe5a3,(1-shade)*.25);this.ground.fillTriangle(256,210,480,330,336,370);}}
+  if(m.cushion||m.photos.sunbeam){this.supports.fillStyle(0x7b936e);this.supports.fillRoundedRect(249,157,48,23,5);this.supports.lineStyle(2,0xbccd9d);this.supports.strokeRoundedRect(252,160,42,17,4);}
+  if(m.mat||m.photos.rattle){this.ground.fillStyle(0x769c9c);this.ground.fillRoundedRect(634,364,60,36,5);this.ground.lineStyle(1,0xaec9bd);this.ground.strokeRoundedRect(638,368,52,28,4);}
+  if(m.kind==='mouse'&&!m.solved){this.mouseArt.setDepth(m.mouse.x<742?m.mouse.y-.1:703.9);this.drawToy(this.mouseArt,'mouse',m.mouse);if(m.clues.includes('bed')){g.fillStyle(0xe9d4a3,.6);g.fillRect(737,651,3,9);g.fillRect(734,654,9,3);}}
+  const hand={x:this.owner.point.x+22,y:this.owner.point.y-39};if(this.tool==='cushion'||this.tool==='mat'){g.fillStyle(this.tool==='mat'?0x769c9c:0x91a184);g.fillRoundedRect(hand.x-14,hand.y-5,29,19,4);g.lineStyle(1,0xd4dfbc);g.strokeRoundedRect(hand.x-11,hand.y-2,23,13,3);}
+  if(this.pourArmed){g.fillStyle(0xe7dcc0);g.fillRect(hand.x-9,hand.y-15,22,31);g.lineStyle(2,0xa7b5a0);g.strokeRect(hand.x-9,hand.y-15,22,31);const fill=Math.min(100,this.pourLevel)/100*26;g.fillStyle(0x8bbdc1);g.fillRect(hand.x-6,hand.y+12-fill,16,fill);g.lineStyle(2,0xd0a65e);g.lineBetween(hand.x-10,hand.y-8,hand.x+14,hand.y-8);if(this.pourActive){g.lineStyle(3,0xb5dbd6);g.lineBetween(hand.x+13,hand.y+4,656,380);}}
+ }
  private changed(){const result=unlock(this.state);this.state=result.state;this.hooks.change(this.state);if(result.names.length)this.hooks.notice?.(`A little more trust · Unlocked: ${result.names.join(', ')}. Look in your Journal.`);}
  private discoverAt(id:string){const d=DISCOVERIES.find(d=>d.id===id);if(!d||this.state.adventure.discovered.includes(id))return;this.goOwner(d.approach,()=>{this.ownerTask={kind:'discover',elapsed:0,duration:1300,done:()=>{this.state=discover(this.state,id);this.changed();this.burst(this.owner.point,0xe7c996,12);this.hooks.sound('complete');this.hooks.notice?.(`${d.name} · a small discovery for your Bag! +2 hearts, +1 bond.`);}};});}
  respondMoment(quiet=false){
@@ -189,7 +235,7 @@ export class Home extends Phaser.Scene{
   if(!this.seat)return;this.seat=undefined;this.ownerIdle=0;
   if(this.lap){const from=this.catDisplay();this.lap=false;this.hop={from,to:{...this.cat.point},elapsed:0,done:()=>{this.jumpDisplay=undefined;this.animateCat('sit');}};}
  }
- putDown(){if(this.ownerTask)return;this.tool='hands';this.toyUntil=0;this.playActive=false;this.roundPending=false;this.pounces=0;this.toyMotion=undefined;}
+ putDown(){if(this.pourActive)this.releaseCare();this.pourArmed=false;if(this.ownerTask)return;this.tool='hands';this.toyUntil=0;this.playActive=false;this.roundPending=false;this.pounces=0;this.toyMotion=undefined;}
  callCat(){
   if(this.lap){this.hooks.sound('company');return;}
   if(this.isSulking()){this.refuse();return;}if(this.catTask||this.hop||this.catSurface||this.playTime-this.lastCall<20000)return;
@@ -208,7 +254,7 @@ export class Home extends Phaser.Scene{
   this.lastAim={point:to,time:now};this.toy=to;
   if(this.activeToy==='laser'&&!this.catTask&&!this.catArrived&&!this.pounce&&distance(this.cat.point,to)>40)this.goCat(to);
  }
- keyboardToy(){this.playAction(true);}
+ keyboardToy(){if(this.state.mystery.kind==='mouse'&&!this.state.mystery.solved)this.pullMouse();else this.playAction(true);}
  private freeNear(point:Point,nav:Navigator){return canStand(LAYOUT,point,nav.radius)?point:nav.nearest(point);}
  private mount(f:Fixture,watch=false){
   if(!f.surface)return;const from={...this.cat.point};this.catSurface=f;this.animateCat('pounce');this.hop={from,to:f.surface,elapsed:0,done:()=>{this.jumpDisplay=undefined;if(watch){this.animateCat('sit');this.behavior='watching the window';this.catRest=22000;this.hooks.sound('chirp');}else{this.animateCat('sleep');this.catRest=11000;this.behavior=f.kind==='bed'?'bedroom pillow nap':'window nap';this.startCatTask('sleep',7000,()=>this.finish('sleep',false));}}};
@@ -216,9 +262,10 @@ export class Home extends Phaser.Scene{
  private catDisplay():Point{if(this.hiding)return {x:this.cat.point.x,y:this.cat.point.y-28};if(this.jumpDisplay)return this.jumpDisplay;if(this.lap&&this.seat?.surface)return {x:this.seat.surface.x,y:this.seat.surface.y-17};return this.catSurface?.surface||this.cat.point;}
  private brain(dt:number,moving:boolean){
   this.ownerIdle=moving?0:this.ownerIdle+dt;this.brainTime+=dt;if(this.brainTime<600)return;this.brainTime=0;
-  const feeling=mood(this.state);this.expression=this.state.adventure.active?.kind==='storm'?'wary':feeling==='overwhelmed'?'flat':feeling==='wary'?'wary':'soft';
+  const feeling=mood(this.state);this.expression=!this.state.mystery.solved&&this.state.mystery.patience===0?'flat':!this.state.mystery.solved&&this.state.mystery.kind!=='mouse'?'wary':feeling==='overwhelmed'?'flat':feeling==='wary'?'wary':'soft';
   if(this.catTask||this.hop||this.pounce||this.reserved||this.catArrived)return;
   if(!this.state.adventure.active&&this.serveNext())return;
+  if(this.caseBrain())return;
   if(this.isSulking()){this.behavior='sulking';if(distance(this.cat.point,this.owner.point)<120&&!this.cat.path.length)this.refuse();return;}
   if(this.tool==='wand'&&this.roundPending&&this.toyUntil>this.playTime&&this.toyRevision>this.consumedToy){
    this.behavior='playing';if(this.catSurface){this.goCat(this.toy);return;}
@@ -266,15 +313,15 @@ export class Home extends Phaser.Scene{
  update(_time:number,delta:number){
   if(!this.owner)return;const dt=Math.min(50,delta);if(this.activePlay&&!document.hidden&&!this.paused)this.playTime+=dt;const time=this.playTime;this.art.update(time,dt,this.state);let moving=false;
   if(this.activePlay&&!document.hidden&&!this.paused){
-   this.state.minutes=advanceClock(this.state.minutes,dt/1000);this.tickAdventure(dt);
-   if(this.ownerTask){this.ownerTask.elapsed+=dt;this.animateOwner(this.ownerTask.kind==='company'?'idle':'care');if(this.ownerTask.elapsed>=this.ownerTask.duration){const task=this.ownerTask;this.ownerTask=undefined;task.done();if(this.queuedWalk){const target=this.queuedWalk;this.queuedWalk=undefined;this.walkTo(target);}}}
+   this.state.minutes=advanceClock(this.state.minutes,dt/1000);if(this.pourActive){this.pourLevel=Math.min(115,this.pourLevel+dt*.032);this.pourSound+=dt;if(this.pourSound>300){this.pourSound=0;this.hooks.sound('pour');}}
+   if(this.pourActive)this.animateOwner('care');else if(this.ownerTask){this.ownerTask.elapsed+=dt;this.animateOwner(this.ownerTask.kind==='company'?'idle':'care');if(this.ownerTask.elapsed>=this.ownerTask.duration){const task=this.ownerTask;this.ownerTask=undefined;task.done();if(this.queuedWalk){const target=this.queuedWalk;this.queuedWalk=undefined;this.walkTo(target);}}}
    else if(this.seat)this.animateOwner('sit');else{
     const v=new Phaser.Math.Vector2(this.inputVector.x,this.inputVector.y);if(v.lengthSq()>0){v.normalize().scale(172*dt/1000);const p=moveWithCollision(LAYOUT,this.owner.point,v.x,v.y);moving=distance(p,this.owner.point)>.05;this.owner.point=p;this.owner.direction=this.direction(v.x,v.y);}else moving=this.followPath(this.owner,this.ownerNav,172,dt);
     this.animateOwner(moving?'walk':this.tool==='wand'&&this.toyUntil>time?'play':'idle');
     if(!moving&&!this.owner.path.length&&this.ownerArrived){if(this.ownerGoal&&distance(this.owner.point,this.ownerGoal)>1){if(this.owner.retries++<3)this.owner.path=this.ownerNav.path(this.owner.point,this.ownerGoal);else this.ownerArrived=undefined;}else{const action=this.ownerArrived;this.ownerArrived=undefined;action();}}
    }
    if(this.hop){const h=this.hop;h.elapsed+=dt;const t=Math.min(1,h.elapsed/700);this.jumpDisplay={x:Phaser.Math.Linear(h.from.x,h.to.x,t),y:Phaser.Math.Linear(h.from.y,h.to.y,t)-Math.sin(t*Math.PI)*32};if(t===1){this.hop=undefined;h.done();if(this.deferredCat){const target=this.deferredCat;this.deferredCat=undefined;this.goCat(target.point,target.done);}}}
-   else if(this.pounce){const p=this.pounce;p.elapsed+=dt;const t=Math.min(1,p.elapsed/650),next={x:Phaser.Math.Linear(p.from.x,p.to.x,t),y:Phaser.Math.Linear(p.from.y,p.to.y,t)};this.cat.point=moveWithCollision(LAYOUT,this.cat.point,next.x-this.cat.point.x,next.y-this.cat.point.y,CAT_RADIUS);this.jumpDisplay={x:this.cat.point.x,y:this.cat.point.y-Math.sin(t*Math.PI)*16};if(t===1){this.pounce=undefined;this.jumpDisplay=undefined;this.consumedToy=this.toyRevision;this.caughtToy();this.animateCat('sit');}}
+   else if(this.pounce){const p=this.pounce;p.elapsed+=dt;const t=Math.min(1,p.elapsed/650),next={x:Phaser.Math.Linear(p.from.x,p.to.x,t),y:Phaser.Math.Linear(p.from.y,p.to.y,t)};this.cat.point=moveWithCollision(LAYOUT,this.cat.point,next.x-this.cat.point.x,next.y-this.cat.point.y,CAT_RADIUS);this.jumpDisplay={x:this.cat.point.x,y:this.cat.point.y-Math.sin(t*Math.PI)*16};if(t===1){this.pounce=undefined;this.jumpDisplay=undefined;this.consumedToy=this.toyRevision;this.caughtToy();this.animateCat('sit');if(this.mysteryPounce){const action=this.mysteryPounce;this.mysteryPounce=undefined;action();}}}
    else if(this.catTask){this.catTask.elapsed+=dt;if(this.catTask.elapsed>=this.catTask.duration){const task=this.catTask;this.catTask=undefined;task.done();this.reserved=false;this.catRest=5000;if(!this.lap&&!this.catSurface)this.animateCat('sit');}}
    else if(!this.lap&&!this.catSurface&&!this.reserved){const catMoving=this.followPath(this.cat,this.catNav,this.playActive&&interest(this.state,this.activeToy)>.8?156:this.state.personality==='Playful'?134:112,dt);if(catMoving)this.animateCat('walk');else{if(this.catPose==='walk')this.animateCat('sit');if(this.catArrived&&!this.cat.path.length){if(this.catGoal&&distance(this.cat.point,this.catGoal)>1){if(this.cat.retries++<3)this.cat.path=this.catNav.path(this.cat.point,this.catGoal);else{this.catArrived=undefined;this.reserved=false;this.catRest=2000;}}else{const action=this.catArrived;this.catArrived=undefined;action();}}}}
    this.brain(dt,moving);this.calmTime+=dt;if(this.calmTime>1000){this.calmTime=0;if(this.state.tension>0&&this.toyUntil<this.playTime){this.state.tension=clamp(this.state.tension-3);}}
@@ -291,13 +338,13 @@ this.saveElapsed+=dt;this.footElapsed+=dt;if(moving&&this.footElapsed>330){this.
   if(this.lap||this.catSurface||this.jumpDisplay||this.hiding){const p=this.catDisplay();this.cat.sprite.setPosition(p.x,p.y).setDepth(this.lap&&this.seat?this.seat.rect.y+this.seat.rect.h+3:this.catSurface?this.catSurface.rect.y+this.catSurface.rect.h+2:this.hiding?this.hiding.rect.y+this.hiding.rect.h-.1:2000);this.cat.shadow.setVisible(false);}else this.cat.shadow.setVisible(true);
   const camera=this.cameras.main;if(this.inspection){const p=PROPS[this.inspection].point;camera.setBounds(-500,-500,1960,1800);camera.setZoom(Math.min(this.scale.width/330,this.scale.height/380,2.25));camera.centerOn(p.x,p.y);}else{camera.scrollX=Phaser.Math.Linear(camera.scrollX,this.owner.point.x-this.scale.width/2,.08);camera.scrollY=Phaser.Math.Linear(camera.scrollY,this.owner.point.y-90-this.scale.height/2,.08);}
   this.drawEffects(dt);
-  this.snapshotElapsed+=dt;if(this.snapshotElapsed>90){this.snapshotElapsed=0;this.hooks.snapshot({view:this.inspection||'room',owner:{...this.owner.point},cat:{...this.cat.point},ownerPose:this.ownerPose,catPose:this.catPose,ownerFrame:String(this.owner.sprite.frame.name),catFrame:String(this.cat.sprite.frame.name),clock:clockHands(this.state.minutes),minutes:this.state.minutes,room:roomAt(LAYOUT,this.owner.point),zoom:camera.zoom,left:camera.worldView.x,top:camera.worldView.y,width:this.scale.width,height:this.scale.height,seated:!!this.seat,catBehavior:this.behavior,tool:this.tool,pounces:this.pounces,ownerBusy:!!this.ownerTask,catDisplay:this.catDisplay(),play:{id:this.activeToy,active:this.playActive,meter:timingAt(time-this.playStarted,this.activeToy),rounds:this.pounces,ready:!this.pounce&&!this.roundPending&&!this.catArrived&&!this.catTask&&!this.hop&&time>=this.playCooldown,feedback:this.playFeedback,steady:this.playSteady}});}
+  this.snapshotElapsed+=dt;if(this.snapshotElapsed>90){this.snapshotElapsed=0;this.hooks.snapshot({pour:{armed:this.pourArmed,active:this.pourActive,level:this.pourLevel},view:this.inspection||'room',owner:{...this.owner.point},cat:{...this.cat.point},ownerPose:this.ownerPose,catPose:this.catPose,ownerFrame:String(this.owner.sprite.frame.name),catFrame:String(this.cat.sprite.frame.name),clock:clockHands(this.state.minutes),minutes:this.state.minutes,room:roomAt(LAYOUT,this.owner.point),zoom:camera.zoom,left:camera.worldView.x,top:camera.worldView.y,width:this.scale.width,height:this.scale.height,seated:!!this.seat,catBehavior:this.behavior,tool:this.tool,pounces:this.pounces,ownerBusy:!!this.ownerTask,catDisplay:this.catDisplay(),play:{id:this.activeToy,active:this.playActive,meter:timingAt(time-this.playStarted,this.activeToy),rounds:this.pounces,ready:!this.pounce&&!this.roundPending&&!this.catArrived&&!this.catTask&&!this.hop&&time>=this.playCooldown,feedback:this.playFeedback,steady:this.playSteady}});}
  }
  private burst(p:Point,color:number,count=6){for(let i=0;i<count;i++)this.sparkles.push({x:p.x+(Math.random()-.5)*30,y:p.y-40-Math.random()*15,life:1,color});}
  highlight(id?:string){this.hovered=id;}
  private drawEffects(dt:number){
   this.marker.clear();if(this.markerPoint&&this.markerLife>0){this.markerLife-=dt/900;this.marker.lineStyle(2,0xffefc7,this.markerLife*.7);this.marker.strokeEllipse(this.markerPoint.x,this.markerPoint.y,20,10);}
-  const g=this.effects;g.clear();this.ground.clear();
+  const g=this.effects;g.clear();this.ground.clear();this.supports.clear();this.mouseArt.clear();this.drawCase();
   const nearby=LAYOUT.fixtures.filter(f=>(OBJECT_NAMES[f.id]||f.id==='tools')&&distance(this.owner.point,f.approach)<100&&!(this.seat===f));
   const hover=this.hovered==='brush'||this.hovered==='wand'?'tools':this.hovered==='treat'?'coffee-table':this.hovered;
   const fixtures=[...new Set([...nearby,...LAYOUT.fixtures.filter(f=>f.id===hover||f.id===this.guideTarget)])];
@@ -309,7 +356,7 @@ this.sparkles=this.sparkles.filter(s=>s.life>0);for(const s of this.sparkles){s.
   for(const d of DISCOVERIES){if(this.state.adventure.discovered.includes(d.id))continue;const p=d.spot,shine=this.state.reducedMotion?.7:.6+Math.sin(this.playTime/400)*.3;g.fillStyle(0xffe4a2,shine);g.fillRect(p.x-1,p.y-5,3,12);g.fillRect(p.x-5,p.y-1,12,3);}
   if(this.state.adventure.unlocks.includes('blanket')){const floor=this.ground;floor.fillStyle(0xd7bb9a);floor.fillRect(340,668,56,32);floor.lineStyle(2,0xf3dfba);floor.strokeRect(344,672,48,24);}
   if(this.state.adventure.active?.kind==='lost')this.drawToy(g,'mouse',{x:265,y:440});
-  if(this.gifted&&this.visitUntil>this.playTime){const p=this.catDisplay();this.drawToy(g,'ball',{x:p.x+12,y:p.y-14},.9);}
+  if(this.gifted&&this.visitUntil>this.playTime){const p=this.catDisplay();this.drawToy(g,this.state.mystery.kind==='mouse'&&this.state.mystery.solved?'mouse':'ball',{x:p.x+12,y:p.y-14},.9);}
   for(const id of TOY_IDS){if(id===this.activeToy&&this.tool==='wand'||!this.state.owned.includes(id))continue;const p=TOYS[id].spot;this.drawToy(g,id,p,1);if(distance(this.owner.point,TOYS[id].approach)<100||this.hovered===`toy-${id}`){g.lineStyle(1.5,0xffe6a6,.9);g.strokeEllipse(p.x,p.y+5,id==='box'?50:26,16);}}
   if(this.tool==='wand'){
    let p={...this.toy};if(this.toyMotion){const m=this.toyMotion,t=Math.min(1,(this.playTime-m.start)/m.duration);p={x:Phaser.Math.Linear(m.from.x,m.to.x,t),y:Phaser.Math.Linear(m.from.y,m.to.y,t)-(this.activeToy==='mouse'?Math.sin(t*Math.PI)*25:0)};if(t>=1)this.toyMotion=undefined;}
