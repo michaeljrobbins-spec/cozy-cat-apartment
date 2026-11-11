@@ -5,11 +5,11 @@ export interface ToyMemory{uses:number;joy:number}
 export interface PlayHistory{toys:Partial<Record<ToyId,ToyMemory>>;last?:ToyId;streak:number;day:number;rewarded:number}
 export const newPlayHistory=():PlayHistory=>({toys:{},streak:0,day:1,rewarded:0});
 export const TOYS:Record<ToyId,{name:string;verb:string;hint:string;period:number;spot:{x:number;y:number};approach:{x:number;y:number}}>={
- wand:{name:'Ribbon wand',verb:'Flick ribbon',hint:'Let the ribbon settle, then flick in the green band.',period:2600,spot:{x:176,y:244},approach:{x:192,y:256}},
- ball:{name:'Crinkle ball',verb:'Roll ball',hint:'Choose a direction. Release in green for a gentle rolling catch.',period:2100,spot:{x:368,y:432},approach:{x:368,y:464}},
+ wand:{name:'Ribbon wand',verb:'Flick ribbon',hint:'Let the ribbon settle. Flick when the toy glows warm.',period:2600,spot:{x:176,y:244},approach:{x:192,y:256}},
+ ball:{name:'Crinkle ball',verb:'Roll ball',hint:'Choose a direction. Roll when the shiny ball glimmers.',period:2100,spot:{x:368,y:432},approach:{x:368,y:464}},
  laser:{name:'Laser pointer',verb:'Let them catch',hint:'Guide the dot slowly near your cat. Pause, then offer a soft mouse to catch.',period:3000,spot:{x:790,y:328},approach:{x:784,y:432}},
- box:{name:'Cardboard box',verb:'Rustle the box',hint:'Wait for curious ears. Rustle in green to invite a hide-and-pounce.',period:3600,spot:{x:352,y:576},approach:{x:368,y:624}},
- feather:{name:'Feather teaser',verb:'Flick feather',hint:'A little patience: flick in green when the cat is ready to leap.',period:2800,spot:{x:368,y:200},approach:{x:384,y:240}},
+ box:{name:'Cardboard box',verb:'Rustle the box',hint:'Wait for curious ears and a warm glow. Rustle to invite a hide-and-pounce.',period:3600,spot:{x:352,y:576},approach:{x:368,y:624}},
+ feather:{name:'Feather teaser',verb:'Flick feather',hint:'Watch for a warm glow: flick when your cat is ready to leap.',period:2800,spot:{x:368,y:200},approach:{x:384,y:240}},
  mouse:{name:'Catnip mouse',verb:'Toss mouse',hint:'Aim 50–110 steps away, then toss. Give your cat time to stalk.',period:2600,spot:{x:320,y:592},approach:{x:320,y:624}},
 };
 const BASE:Record<Personality,Record<ToyId,number>>={Shy:{wand:.64,ball:.55,laser:.42,box:.9,feather:.75,mouse:.88},Playful:{wand:.82,ball:.92,laser:.87,box:.65,feather:.82,mouse:.72},Demanding:{wand:.86,ball:.6,laser:.78,box:.65,feather:.94,mouse:.65}};

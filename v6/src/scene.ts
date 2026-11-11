@@ -48,6 +48,7 @@ export class Home extends Phaser.Scene{
  private goCat(point:Point,done?:()=>void){if(this.hop){this.deferredCat={point,done};return;}if(this.catSurface||this.lap){const from=this.catDisplay();this.catSurface=undefined;this.lap=false;this.animateCat('pounce');this.hop={from,to:{...this.cat.point},elapsed:0,done:()=>{this.jumpDisplay=undefined;this.goCat(point,done);}};return;}this.cat.retries=0;this.cat.stalled=0;this.hiding=undefined;this.catGoal=point;this.cat.path=this.catNav.path(this.cat.point,point);this.catArrived=done;}
  approach(id:string){
   if(!this.activePlay||this.ownerTask)return;
+  if(id!=='cat')this.reserved=false;
   if(this.caseApproach(id))return;
   if(id in PROPS){this.openProp(id as Prop);return;}if(id.startsWith('discover-')){this.discoverAt(id.slice(9));return;}if(id==='moment'){this.respondMoment();return;}if(id.startsWith('toy-')){this.equipToy(id.slice(4));return;}if(id==='cat'){this.visitCat();return;}if(id==='treat'){this.offerTreat();return;}
   if(id==='wand'){this.equipToy('wand');return;}if(id==='brush'){this.putDown();const tools=LAYOUT.fixtures.find(f=>f.id==='tools')!;this.goOwner(tools.approach,()=>{this.owner.direction='left';this.ownerTask={kind:'pickup',elapsed:0,duration:650,done:()=>{this.tool=id;this.hooks.sound('tool');}};});return;}
@@ -57,10 +58,10 @@ export class Home extends Phaser.Scene{
  interact(){if(!this.activePlay)return;if(this.tool==='curtain'){this.adjustCurtain((this.state.mystery.shade+.2)%1.01);return;}if(this.tool==='cushion'){this.placeSupport({x:272,y:176});return;}if(this.tool==='mat'){this.placeSupport({x:656,y:380});return;}if(this.pourArmed){this.startPour();return;}if(this.tool==='wand'&&this.state.mystery.kind==='mouse'&&!this.state.mystery.solved){this.pullMouse();return;}if(this.seat){this.stand();return;}if(this.tool==='wand'){this.keyboardToy();return;}const nearby=this.nearestFixture();if(nearby&&distance(this.owner.point,nearby.approach)<60){this.approach(nearby.id==='tools'?'brush':nearby.id);return;}if(distance(this.owner.point,this.cat.point)<95){this.visitCat();return;}const f=this.nearestFixture();if(f&&distance(this.owner.point,f.approach)<110)this.approach(f.id==='tools'?'brush':f.id);}
  private nearestFixture(){return LAYOUT.fixtures.filter(f=>!['wall','plantTable'].includes(f.kind)).sort((a,b)=>distance(this.owner.point,a.approach)-distance(this.owner.point,b.approach))[0];}
  get view(){return this.inspection||'room';}
- openProp(id:Prop){if(this.ownerTask)return;this.putDown();this.goOwner(PROPS[id].approach,()=>{if(id==='fridge')this.applyCase('read');this.inspection=id;this.setPaused(true);this.drawProp();this.hooks.sound('tool');});}
+ openProp(id:Prop){if(this.ownerTask)return;this.reserved=false;this.putDown();this.goOwner(PROPS[id].approach,()=>{if(id==='fridge')this.applyCase('read');this.inspection=id;this.setPaused(true);this.drawProp();this.hooks.sound('tool');});}
  closeProp(){this.inspection=undefined;this.propArt.clear();this.setPaused(false);this.resize();}
  private drawProp(){if(!this.inspection)return;const g=this.propArt,p=PROPS[this.inspection].point;g.clear();const r=(x:number,y:number,w:number,h:number,c:number)=>{g.fillStyle(c);g.fillRect(p.x+x,p.y+y,w,h);};
-  if(this.inspection==='cabinet'){r(-148,-170,296,340,0x806244);r(-140,-162,280,324,0xc4a274);r(-134,-151,268,297,0xa98860);for(let i=0;i<5;i++){r(-133,-110+i*58,266,5,0xe1c392);r(-133,-105+i*58,266,4,0x785d41);}r(-154,-160,8,320,0xd6b889);r(146,-160,8,320,0xd6b889);}
+  if(this.inspection==='cabinet'){r(-148,-170,296,340,0x806244);r(-140,-162,280,324,0xc4a274);r(-134,-151,268,297,0xa98860);for(let i=0;i<5;i++){r(-133,-110+i*58,266,5,0xe1c392);r(-133,-105+i*58,266,4,0x785d41);}r(-154,-160,8,320,0xd6b889);r(146,-160,8,320,0xd6b889);g.fillStyle(0x9c7b52);g.fillPoints([{x:p.x-154,y:p.y-160},{x:p.x-188,y:p.y-143},{x:p.x-188,y:p.y+145},{x:p.x-154,y:p.y+160}],true);g.fillPoints([{x:p.x+154,y:p.y-160},{x:p.x+188,y:p.y-143},{x:p.x+188,y:p.y+145},{x:p.x+154,y:p.y+160}],true);g.fillStyle(0xd4b67d);for(const x of [-155,151])for(const y of [-100,105])g.fillRect(p.x+x,p.y+y,4,12);}
   if(this.inspection==='fridge'){r(-147,-172,294,344,0xa5b198);r(-140,-168,280,336,0xe5e7d0);r(-136,-160,5,316,0xf8f6e7);r(125,-40,6,68,0x89967f);r(-117,-129,230,253,0xd9cfaa);r(-120,-133,230,253,0xfff1c9);r(-15,-144,29,18,0xc98878);}
   if(this.inspection==='phone'){g.fillStyle(0x394e4c);g.fillRoundedRect(p.x-137,p.y-175,274,350,18);r(-125,-150,250,300,0xf7f2df);r(-21,-165,42,4,0x7c9690);g.lineStyle(2,0x9cb3a5);g.strokeCircle(p.x,p.y+164,6);}
   if(this.inspection==='clock'){g.fillStyle(0x92714f);g.fillCircle(p.x,p.y,115);g.fillStyle(0xf4e8c8);g.fillCircle(p.x,p.y,104);const hands=clockHands(this.state.minutes);for(let i=0;i<12;i++){const a=i*Math.PI/6;g.fillStyle(0x89977a);g.fillRect(p.x+Math.sin(a)*91-2,p.y-Math.cos(a)*91-2,4,4);}for(const [angle,len,width]of [[hands.hour,54,6],[hands.minute,85,3]]){const a=angle*Math.PI/180;g.lineStyle(width,0x637259);g.lineBetween(p.x,p.y,p.x+Math.sin(a)*len,p.y-Math.cos(a)*len);}g.fillStyle(0x637259);g.fillCircle(p.x,p.y,5);}
@@ -70,7 +71,7 @@ export class Home extends Phaser.Scene{
   if(f.id==='water'&&this.state.mystery.kind==='rattle'&&!this.state.mystery.solved){this.armPour();return;}
   if(f.id==='food'||f.id==='water'){
    this.owner.direction='up';this.ownerTask={kind:f.id,elapsed:0,duration:1450,done:()=>{
-    this.state={...this.state,[f.id]:3};this.record(f.id==='food'?'refillFood':'refillWater');this.art.build(this.state);this.hooks.sound('refill');this.burst({x:f.rect.x+f.rect.w/2,y:f.rect.y+16},0xe7cea0);
+    this.state={...this.state,[f.id]:3};this.record(f.id==='food'?'refillFood':'refillWater');this.art.build(this.state);this.hooks.sound(f.id==='food'?'food-scoop':'pour');this.burst({x:f.rect.x+f.rect.w/2,y:f.rect.y+16},0xe7cea0);
     const aside=this.freeNear({x:f.approach.x+64,y:f.approach.y+32},this.ownerNav);this.owner.path=this.ownerNav.path(this.owner.point,aside);
     if(!this.careQueue.includes(f.id as 'food'|'water'))this.careQueue.push(f.id as 'food'|'water');this.serveNext();
    }};return;
@@ -104,7 +105,7 @@ export class Home extends Phaser.Scene{
    this.ownerTask={kind:this.tool==='brush'?'brush':'company',elapsed:0,duration:2600,done:()=>{this.finish(this.tool==='brush'?'brush':'company');this.reserved=false;this.catRest=5000;this.animateCat('sit');}};
   });
  }
- giveTreat(id:string){if(this.ownerTask){this.hooks.notice?.('Let the current little task finish first.');return;}this.offerTreat(id);}
+ giveTreat(id:string){this.reserved=false;if(this.ownerTask){this.hooks.notice?.('Let the current little task finish first.');return;}this.offerTreat(id);}
  equipToy(id:string){
   if(!TOY_IDS.includes(id as ToyId)||!this.activePlay||this.ownerTask)return;
   if(this.state.adventure.active?.kind==='storm'){this.hooks.notice?.('The ears ask for quiet. Help your cat feel safe before playing.');return;}if(!this.state.owned.includes(id)){this.hooks.sound('inventory');return;}
@@ -115,7 +116,7 @@ export class Home extends Phaser.Scene{
   if(this.catTask||this.catPose==='sleep'){this.playFeedback='A little nap first. Try again when your cat wakes.';return;}
   if(!accepts(this.state,'play')){this.playFeedback='A little rest or space first.';this.refuse();return;}
   if(interest(this.state,this.activeToy)<.36){this.playFeedback='A glance, then a turned back. Try a different toy.';this.cat.direction=this.direction(this.cat.point.x-this.owner.point.x,this.cat.point.y-this.owner.point.y);this.animateCat('groom');this.hooks.sound('meow');return;}
-  this.playStarted=this.playTime;this.playActive=true;this.playScore=0;this.pounces=0;this.playSteady=0;this.roundPending=false;this.visitUntil=0;this.catArrived=undefined;this.cat.path=[];this.playFeedback=interest(this.state,this.activeToy)>.8?'Bright eyes! A promising choice.':TOYS[this.activeToy].hint;
+  this.playStarted=this.playTime;this.playActive=true;this.playScore=0;this.pounces=0;this.playSteady=0;this.roundPending=false;this.visitUntil=0;this.catArrived=undefined;this.cat.path=[];this.playFeedback=interest(this.state,this.activeToy)>.8?'Bright eyes! A promising choice.':TOYS[this.activeToy].hint;this.hooks.notice?.(TOYS[this.activeToy].hint);
   this.toy={x:this.owner.point.x+65,y:this.owner.point.y+20};this.hooks.sound('chirp');
   if(this.activeToy==='box')this.toy={...TOYS.box.spot};
   this.goCat(this.freeNear({x:this.toy.x-40,y:this.toy.y+20},this.catNav),()=>{this.animateCat('sit');this.behavior='watching the toy';});
@@ -162,7 +163,7 @@ export class Home extends Phaser.Scene{
  guide(id?:string){this.guideTarget=id;}
 
  private applyCase(action:MysteryAction,value=0){const result=act(this.state,action,value);this.state=result.state;this.changed();if(result.message)this.hooks.notice?.(result.message);if(result.success)this.casePayoff();return result.success;}
- startDay(){this.setupCase();}
+ startDay(){if(this.cat)this.setupCase();}
  private setupCase(){this.putDown();this.catArrived=undefined;this.catTask=undefined;this.reserved=false;this.visitUntil=0;this.caseRest=5000;if(this.state.mystery.solved)return;const kind=this.state.mystery.kind;this.goCat(kind==='sunbeam'?{x:304,y:240}:kind==='rattle'?{x:656,y:448}:{x:704,y:640},()=>{this.cat.direction=kind==='mouse'?'right':'up';this.animateCat('sit');});}
  private caseApproach(id:string){const m=this.state.mystery;if(m.solved)return false;
   if(id==='cat'&&this.tool==='hands'){this.reserved=true;this.cat.path=[];this.catArrived=undefined;this.goOwner(this.freeNear({x:this.cat.point.x-42,y:this.cat.point.y+12},this.ownerNav),()=>{this.ownerTask={kind:'company',elapsed:0,duration:m.patience===0?2100:900,done:()=>{this.reserved=false;this.applyCase(m.patience===0?'reassure':'cat');this.hooks.sound('company');}};});return true;}
@@ -179,15 +180,15 @@ export class Home extends Phaser.Scene{
  private armPour(){this.applyCase('bowl');this.hooks.sound(this.state.mystery.mat?'pour':'bowl-ring');this.pourArmed=true;this.pourLevel=0;this.hooks.notice?.('Hold the pour action, then release at the gold mark on the jug.');}
  startPour(){if(!this.pourArmed||this.ownerTask||this.pourActive)return;this.pourActive=true;this.pourLevel=0;this.owner.direction='up';this.animateOwner('care');}
  releaseCare(){if(!this.pourActive)return;this.pourActive=false;this.state.water=3;this.art.build(this.state);const won=this.applyCase('pour',this.pourLevel);if(won)this.pourArmed=false;else this.hooks.sound(this.state.mystery.mat?'splash':'bowl-ring');}
- dragMouse(point:Point){const m=this.state.mystery;if(m.kind!=='mouse'||m.solved||this.tool!=='wand'||distance(this.owner.point,{x:688,y:640})>120)return;const now=this.playTime;
+ dragMouse(point:Point){const m=this.state.mystery;if(m.kind!=='mouse'||m.solved||this.tool!=='wand'||distance(this.owner.point,{x:688,y:640})>120)return;if(m.patience===0){this.hooks.notice?.('Tools down for a quiet moment together first.');return;}const now=this.playTime;
   if(!m.mouse.hooked){if(distance(point,m.mouse)<25&&m.clues.includes('bed')){m.mouse.hooked=true;this.lastMouseDrag={point,time:now};this.hooks.sound('mouse-bell');}return;}
   const speed=this.lastMouseDrag?distance(point,this.lastMouseDrag.point)/Math.max(.016,(now-this.lastMouseDrag.time)/1000):0;this.lastMouseDrag={point,time:now};if(speed>300){m.mouse.hooked=false;this.applyCase('recover',0);return;}
   if(distance(point,this.owner.point)>150)return;m.mouse.x=point.x;m.mouse.y=point.y;
   if(canStand(LAYOUT,point,CAT_RADIUS)&&point.x<742){m.mouse.hooked=false;this.applyCase('recover',1);}
  }
- pullMouse(){const m=this.state.mystery;if(m.kind!=='mouse'||m.solved||this.tool!=='wand')return;if(!m.clues.includes('bed')){this.hooks.notice?.('Where is that tiny bell coming from? Follow your cat’s gaze.');return;}if(distance(this.owner.point,{x:688,y:640})>85){this.goOwner({x:688,y:640},()=>{});return;}this.hooks.sound('mouse-bell');m.mouse.x-=12;m.mouse.y-=2;if(m.mouse.x<738)this.applyCase('recover',1);else this.changed();}
+ pullMouse(){const m=this.state.mystery;if(m.kind!=='mouse'||m.solved||this.tool!=='wand')return;if(m.patience===0){this.hooks.notice?.('Put the wand down and offer a little reassurance first.');return;}if(!m.clues.includes('bed')){this.hooks.notice?.('Where is that tiny bell coming from? Follow your cat’s gaze.');return;}if(distance(this.owner.point,{x:688,y:640})>85){this.goOwner({x:688,y:640},()=>{});return;}this.hooks.sound('mouse-bell');m.mouse.x-=12;m.mouse.y-=2;if(m.mouse.x<738)this.applyCase('recover',1);else this.changed();}
  private casePayoff(){this.pourActive=false;this.pourArmed=false;this.tool='hands';this.playActive=false;this.caseRest=15000;this.payoffUntil=this.playTime+11000;this.catTask=undefined;this.catArrived=undefined;this.reserved=false;const kind=this.state.mystery.kind;this.hooks.sound(`${kind}-win`);
-  if(kind==='sunbeam'){const f=LAYOUT.fixtures.find(f=>f.id==='window-seat')!;this.goCat(f.approach,()=>this.mount(f,true));this.hooks.sound('chirp');}
+  if(kind==='sunbeam'){const f=LAYOUT.fixtures.find(f=>f.id==='window-seat')!;this.owner.path=this.ownerNav.path(this.owner.point,{x:368,y:240});this.goCat(f.approach,()=>this.mount(f,true));this.hooks.sound('chirp');}
   else if(kind==='rattle'){const f=LAYOUT.fixtures.find(f=>f.id==='water')!;this.state.water=3;this.goCat(f.approach,()=>{this.cat.direction='up';this.startCatTask('drink',2600,()=>{this.finish('drink');this.goCat(this.freeNear({x:this.owner.point.x-35,y:this.owner.point.y+12},this.catNav),()=>this.startCatTask('rub',1800,()=>{}));});});}
   else{const target=this.freeNear(this.state.mystery.mouse,this.catNav);this.goCat(this.freeNear({x:target.x-26,y:target.y},this.catNav),()=>{this.animateCat('pounce');this.pounce={from:{...this.cat.point},to:target,elapsed:0};this.mysteryPounce=()=>{this.gifted=true;this.visitUntil=this.playTime+9000;this.goCat(this.freeNear({x:this.owner.point.x+25,y:this.owner.point.y+12},this.catNav),()=>this.startCatTask('rub',2200,()=>{}));this.hooks.sound('company');};});}
  }
@@ -262,7 +263,7 @@ export class Home extends Phaser.Scene{
  private catDisplay():Point{if(this.hiding)return {x:this.cat.point.x,y:this.cat.point.y-28};if(this.jumpDisplay)return this.jumpDisplay;if(this.lap&&this.seat?.surface)return {x:this.seat.surface.x,y:this.seat.surface.y-17};return this.catSurface?.surface||this.cat.point;}
  private brain(dt:number,moving:boolean){
   this.ownerIdle=moving?0:this.ownerIdle+dt;this.brainTime+=dt;if(this.brainTime<600)return;this.brainTime=0;
-  const feeling=mood(this.state);this.expression=!this.state.mystery.solved&&this.state.mystery.patience===0?'flat':!this.state.mystery.solved&&this.state.mystery.kind!=='mouse'?'wary':feeling==='overwhelmed'?'flat':feeling==='wary'?'wary':'soft';
+  const feeling=mood(this.state);this.expression=!this.state.mystery.solved&&this.state.mystery.patience===0?'flat':!this.state.mystery.solved&&(this.state.mystery.kind==='sunbeam'||this.state.mystery.kind==='rattle'&&!this.state.mystery.mat)?'wary':feeling==='overwhelmed'?'flat':feeling==='wary'?'wary':'soft';
   if(this.catTask||this.hop||this.pounce||this.reserved||this.catArrived)return;
   if(!this.state.adventure.active&&this.serveNext())return;
   if(this.caseBrain())return;
@@ -307,7 +308,7 @@ export class Home extends Phaser.Scene{
  }
  private direction(dx:number,dy:number):Direction{return Math.abs(dx)>Math.abs(dy)?dx<0?'left':'right':dy<0?'up':'down';}
  private followPath(actor:Resident,nav:Navigator,speed:number,dt:number){const before=actor.point,next=actor.path[0];if(!next)return false;actor.direction=this.direction(next.x-before.x,next.y-before.y);actor.point=routeStep(LAYOUT,before,actor.path,speed*dt/1000,nav.radius);const moved=distance(before,actor.point);actor.stalled=moved<.02?actor.stalled+dt:0;
-  if(actor.stalled>450){actor.stalled=0;actor.retries++;const goal=actor===this.cat?this.catGoal:this.ownerGoal;if(goal&&actor.retries<3)actor.path=nav.path(actor.point,goal);else{actor.path=[];if(actor===this.cat){this.catArrived=undefined;this.reserved=false;this.catRest=2000;}else{this.ownerArrived=undefined;this.hooks.notice?.('A little more room, then try approaching again.');}}}return moved>.001;
+  if(actor.stalled>450){actor.stalled=0;actor.retries++;const goal=actor===this.cat?this.catGoal:this.ownerGoal;if(goal&&actor.retries<3)actor.path=nav.path(actor.point,goal);else{actor.path=[];if(actor===this.cat){this.catArrived=undefined;this.reserved=false;this.catRest=2000;}else{this.ownerArrived=undefined;this.reserved=false;this.hooks.notice?.('A little more room, then try approaching again.');}}}return moved>.001;
  }
  setPaused(value:boolean){this.paused=value;this.inputVector={x:0,y:0};if(this.cat){if(value){this.cat.sprite.anims.pause();this.owner.sprite.anims.pause();}else{this.cat.sprite.anims.resume();this.owner.sprite.anims.resume();}}}
  update(_time:number,delta:number){
@@ -318,7 +319,7 @@ export class Home extends Phaser.Scene{
    else if(this.seat)this.animateOwner('sit');else{
     const v=new Phaser.Math.Vector2(this.inputVector.x,this.inputVector.y);if(v.lengthSq()>0){v.normalize().scale(172*dt/1000);const p=moveWithCollision(LAYOUT,this.owner.point,v.x,v.y);moving=distance(p,this.owner.point)>.05;this.owner.point=p;this.owner.direction=this.direction(v.x,v.y);}else moving=this.followPath(this.owner,this.ownerNav,172,dt);
     this.animateOwner(moving?'walk':this.tool==='wand'&&this.toyUntil>time?'play':'idle');
-    if(!moving&&!this.owner.path.length&&this.ownerArrived){if(this.ownerGoal&&distance(this.owner.point,this.ownerGoal)>1){if(this.owner.retries++<3)this.owner.path=this.ownerNav.path(this.owner.point,this.ownerGoal);else this.ownerArrived=undefined;}else{const action=this.ownerArrived;this.ownerArrived=undefined;action();}}
+    if(!moving&&!this.owner.path.length&&this.ownerArrived){if(this.ownerGoal&&distance(this.owner.point,this.ownerGoal)>1){if(this.owner.retries++<3)this.owner.path=this.ownerNav.path(this.owner.point,this.ownerGoal);else{this.ownerArrived=undefined;this.reserved=false;}}else{const action=this.ownerArrived;this.ownerArrived=undefined;action();}}
    }
    if(this.hop){const h=this.hop;h.elapsed+=dt;const t=Math.min(1,h.elapsed/700);this.jumpDisplay={x:Phaser.Math.Linear(h.from.x,h.to.x,t),y:Phaser.Math.Linear(h.from.y,h.to.y,t)-Math.sin(t*Math.PI)*32};if(t===1){this.hop=undefined;h.done();if(this.deferredCat){const target=this.deferredCat;this.deferredCat=undefined;this.goCat(target.point,target.done);}}}
    else if(this.pounce){const p=this.pounce;p.elapsed+=dt;const t=Math.min(1,p.elapsed/650),next={x:Phaser.Math.Linear(p.from.x,p.to.x,t),y:Phaser.Math.Linear(p.from.y,p.to.y,t)};this.cat.point=moveWithCollision(LAYOUT,this.cat.point,next.x-this.cat.point.x,next.y-this.cat.point.y,CAT_RADIUS);this.jumpDisplay={x:this.cat.point.x,y:this.cat.point.y-Math.sin(t*Math.PI)*16};if(t===1){this.pounce=undefined;this.jumpDisplay=undefined;this.consumedToy=this.toyRevision;this.caughtToy();this.animateCat('sit');if(this.mysteryPounce){const action=this.mysteryPounce;this.mysteryPounce=undefined;action();}}}
@@ -361,7 +362,7 @@ this.sparkles=this.sparkles.filter(s=>s.life>0);for(const s of this.sparkles){s.
   if(this.tool==='wand'){
    let p={...this.toy};if(this.toyMotion){const m=this.toyMotion,t=Math.min(1,(this.playTime-m.start)/m.duration);p={x:Phaser.Math.Linear(m.from.x,m.to.x,t),y:Phaser.Math.Linear(m.from.y,m.to.y,t)-(this.activeToy==='mouse'?Math.sin(t*Math.PI)*25:0)};if(t>=1)this.toyMotion=undefined;}
    if(this.activeToy==='wand'||this.activeToy==='feather'){g.lineStyle(3,0x927149);g.lineBetween(hand.x,hand.y,hand.x+23,hand.y-26);g.lineStyle(1,0xb7a180);g.lineBetween(hand.x+23,hand.y-26,p.x,p.y);}
-   this.drawToy(g,this.activeToy==='laser'&&this.roundPending?'mouse':this.activeToy,p,1);
+   this.drawToy(g,this.activeToy==='laser'&&this.roundPending?'mouse':this.activeToy,p,1);if(this.playActive&&!this.roundPending){const t=timingAt(this.playTime-this.playStarted,this.activeToy),warm=this.activeToy==='laser'?this.playSteady>=.55:t>=.32&&t<=.78;g.lineStyle(warm?3:1,warm?0xf9df91:0xb8c5a0,warm?.8:.35);g.strokeEllipse(p.x,p.y+8,34,15);for(let i=0;i<3;i++){g.fillStyle(i<this.pounces?0xd9a48a:0xc9c9ab,.8);g.fillCircle(p.x-10+i*10,p.y+22,2.5);}}
   }
   if(this.ownerTask?.kind==='food'||this.ownerTask?.kind==='water'){
    g.fillStyle(this.ownerTask.kind==='food'?0xd3b584:0x8fb6b1);g.fillRect(this.owner.point.x-10,this.owner.point.y-36,19,21);g.fillStyle(0xf2dbaa);g.fillRect(this.owner.point.x-8,this.owner.point.y-33,15,4);

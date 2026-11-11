@@ -48,6 +48,8 @@ export class Soundscape{
   if(kind==='brush'||kind==='company'){this.purr();return;}
   if(kind==='meow'||kind==='refuse'){this.meow(kind==='refuse');return;}
   const now=c.currentTime;
+  if(kind==='food-scoop'){for(let i=0;i<9;i++)this.tone(110+Math.random()*180,now+i*.055,.045,.014,'triangle');return;}
+  if(kind==='splash'){this.tone(170,now,.2,.022,'triangle');this.tone(340,now+.04,.14,.009);return;}
   if(kind==='bowl-ring'){this.tone(620,now,1.1,.025,'sine');this.tone(1073,now,.65,.012,'sine');this.tone(1580,now,.35,.006,'sine');return;}
   if(kind==='pour'){this.tone(330+Math.random()*180,now,.13,.016);this.tone(560+Math.random()*180,now+.07,.09,.01);return;}
   if(kind==='mouse-bell'){this.tone(1320,now,.32,.018);this.tone(1760,now+.09,.2,.008);return;}

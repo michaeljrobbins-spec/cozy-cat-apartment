@@ -7,7 +7,8 @@ export const CASE_INFO:Record<Case,{title:string;goal:string;hint:string;payoff:
  rattle:{title:'The bowl that talks back',goal:'Help your cat enjoy a peaceful drink.',hint:'Listen to the ringing bowl. Try the felt mat from your cabinet, then hold to pour and release at the marked waterline.',payoff:'A quiet little sip'},
  mouse:{title:'One very missing mouse',goal:'Find the missing toy and help your cat catch it.',hint:'Follow the gaze and listen near the bed. Hook the mouse with the ribbon wand and ease it onto clear floor. E gives a gentle pull.',payoff:'Found, caught, treasured'},
 };
-export const newMystery=(day=1,kind:Case=CASES[(day-1)%3],photos:Mystery['photos']={}):Mystery=>({day,kind,photos:{...photos},solved:false,read:false,clues:[],patience:4,attempts:0,shade:0,cushion:false,mat:false,mouse:{x:758,y:654,hooked:false,recovered:false}});
+export const newMystery=(day=1,kind:Case=CASES[(day-1)%3],photos:Mystery['photos']={}):Mystery=>({day,kind,photos:{...photos},solved:false,read:false,clues:[],patience:4,attempts:0,shade:0,cushion:!!photos.sunbeam,mat:!!photos.rattle,mouse:{x:758,y:654,hooked:false,recovered:false}});
+export function caseInfo(m:Mystery){const original=CASE_INFO[m.kind];if(!m.photos[m.kind])return original;if(m.kind==='sunbeam')return {...original,title:'A new angle of sunlight',goal:'Help your cat find the softer morning light.',hint:'The cushion is familiar, but the morning light is bright again. Soften it with the curtain, then invite your cat.'};if(m.kind==='rattle')return {...original,title:'A fussy little pour',goal:'Offer a fresh drink with a gentle pour.',hint:'The felt mat is still soft. Hold to pour and release at the gold waterline; watch those little ears.'};return {...original,title:'Hide-and-seek again',goal:'Follow the little bell and help your cat find the mouse.'};}
 export function nextMystery(m:Mystery,day:number){return newMystery(day,m.solved?CASES[(CASES.indexOf(m.kind)+1)%3]:m.kind,m.photos);}
 export type MysteryAction='cat'|'seat'|'bowl'|'bed'|'read'|'shade'|'cushion'|'mat'|'invite'|'pour'|'recover'|'reassure'|'wrong';
 export function act(s:Save,action:MysteryAction,value=0):{state:Save;message:string;success:boolean}{
@@ -17,7 +18,7 @@ export function act(s:Save,action:MysteryAction,value=0):{state:Save;message:str
  if(action==='read')m.read=true;
  if(action==='cat')clue('cat',m.kind==='sunbeam'?'A squint toward the bright window, then a glance at the bare perch.':m.kind==='rattle'?'Thirsty… but that ringing sound makes the ears fold back.':'A pointed gaze toward the bedroom. A tiny, searching chirp.');
  if(action==='seat')clue('seat','The wood feels hard, and the light is bright at eye level.');
- if(action==='bowl')clue('bowl','Ting! The bowl rocks against the hard floor. A little padding might help.');
+ if(action==='bowl')clue('bowl',m.mat?'The felt pad is soft and quiet. A fresh, gentle pour would be lovely.':'Ting! The bowl rocks against the hard floor. A little padding might help.');
  if(action==='bed')clue('bed','A familiar felt tail peeks from under the bed. A wand could reach it.');
  if(action==='reassure'){m.patience=Math.min(4,m.patience+3);n.tension=Math.max(0,n.tension-30);message='A slow blink, a softer tail. Ready to be curious again.';}
  if(!m.solved){

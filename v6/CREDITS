@@ -17,14 +17,14 @@ Chirps: short, voiced rising/falling syllables and double chirps.
 Hisses: soft, shaped, unvoiced airflow with a gradual attack.
 No external sample source or recording license applies to these sounds.
 
-Original score, city ambience, rain, distant thunder and care effects
+Original score, city ambience, rain, distant thunder, mystery motifs and care effects
 --------------------------------------------------
 Source: src/audio.ts
 Locally generated with Web Audio; no external sample recordings.
 
 Original pixel art and animation
 -------------------------------
-Sources: src/sprites.ts, src/room.ts, src/scene.ts and src/inventory.ts. No third-party artwork or fonts.
+Sources: src/sprites.ts, src/room.ts, src/scene.ts, src/inventory.ts and src/props.ts. No third-party artwork or fonts.
 
 Runtime library
 ---------------

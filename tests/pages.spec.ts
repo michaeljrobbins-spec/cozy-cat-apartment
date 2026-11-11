@@ -40,6 +40,10 @@ test('built site works below a GitHub Pages repository prefix',async({page})=>{
     await page.getByRole('button',{name:'Open the door',exact:false}).click();await expect(page.locator('#stage')).toHaveAttribute('data-ready','true');
     await page.getByRole('button',{name:'Open inventory',exact:true}).click();await expect(page.locator('#inventory-dialog')).toContainText('Crinkle ball');await page.getByRole('button',{name:'Close inventory',exact:true}).click();
     const v5credits=await page.request.get(`http://127.0.0.1:${port}/cozy-cat-apartment/v5/CREDITS.txt`);expect(v5credits.status()).toBe(200);expect(await v5credits.text()).toContain('LITTLE WINDOWS V5');
+    await page.goto(`http://127.0.0.1:${port}/cozy-cat-apartment/v6/`);
+    await expect(page).toHaveTitle(/Purrsonal Space/);await page.getByRole('button',{name:'Open the door',exact:false}).click();await expect(page.locator('#stage')).toHaveAttribute('data-view','room');
+    await page.keyboard.press('b');await expect(page.locator('#stage')).toHaveAttribute('data-view','cabinet',{timeout:7000});await expect(page.locator('#prop-content')).toContainText('Crinkle ball');
+    const v6credits=await page.request.get(`http://127.0.0.1:${port}/cozy-cat-apartment/v6/CREDITS.txt`);expect(v6credits.status()).toBe(200);expect(await v6credits.text()).toContain('PURRSONAL SPACE V6');
     expect(errors).toEqual([]);expect(requests).toEqual([]);
     await page.setViewportSize({width:320,height:568});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   }finally{await new Promise<void>((done,reject)=>server.close(err=>err?reject(err):done()));}
