@@ -16,7 +16,7 @@ export class LivingRoom extends Phaser.Scene{
  private legs:string[]=[];private leg?:Leg;private rest=2200;private physical={...SPOTS.center};private lastSnapshot=0;
  private focus=true;private manualUntil=0;private chooseCount=0;private arrivalPose:Pose='sit';private arrivalRest=6000;private arrived?:()=>void;private queued?:()=>void;
  private task?:Task;private tool:Tool='hands';private brushCount=0;private lastBrush=-1000;private pounces=0;private toy={x:490,y:685};private toyActive=0;private toyReady=0;
- private calmTime=0;private lastRefusal=-3000;private sniffTime=0;
+ private footTime=0;private calmTime=0;private lastRefusal=-3000;private sniffTime=0;
  private leap?:{from:Point;to:Point;elapsed:number};private sparkles:{x:number;y:number;life:number;color:number}[]=[];
  constructor(hooks:RoomHooks){super('living-room');this.hooks=hooks;}
  create(){
@@ -106,7 +106,7 @@ export class LivingRoom extends Phaser.Scene{
  private burst(x:number,y:number,color:number,count=6){for(let i=0;i<count;i++)this.sparkles.push({x:x+(Math.random()-.5)*45,y:y+Math.random()*12,life:1,color});}
  update(_time:number,delta:number){
   if(!this.cat)return;const dt=Math.min(delta,60);
-  this.calmTime+=dt;this.sniffTime+=dt;
+  this.calmTime+=dt;this.sniffTime+=dt;this.footTime+=dt;if(this.pose==='walk'&&this.footTime>360){this.footTime=0;this.hooks.feedback?.('step');}
   if(this.calmTime>=1000){this.calmTime=0;const quiet=this.tool==='hands'||(this.tool==='brush'&&this.time.now-this.lastBrush>3000)||this.toyActive<this.time.now;
    if(quiet&&this.state.tension>0){this.state={...this.state,tension:clamp(this.state.tension-(this.pose==='sleep'?5:3))};this.hooks.change(this.state);this.bodyLanguage();}}
   if(this.sniffTime>15000){this.sniffTime=0;if(mood(this.state)==='hungry'||mood(this.state)==='thirsty'||this.state.personality==='Demanding')this.hooks.feedback?.('meow');}

@@ -15,3 +15,5 @@ main{width:min(1280px,calc(100% - 64px),calc(72vh * 1.6))}
 #tool-state{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:#fcf5e8eb;backdrop-filter:blur(5px);color:#6e7b58;border:1px solid #e6dfc7;border-radius:22px;padding:2px 6px 2px 16px;font-size:10px;white-space:nowrap;box-shadow:0 3px 15px #4a43221a}
 #tool-state button{font-size:10px;background:#e5e9d8;border-radius:18px;padding:5px 12px;min-height:36px}
 @media(max-width:700px){main{width:calc(100% - 28px)}#stage{height:65dvh;min-height:430px;aspect-ratio:auto}.header-right{gap:7px}.heart-wallet{padding:8px 10px;font-size:11px}#day{display:none}.room-object{width:48px;height:48px}#tool-state{font-size:8px;gap:5px;max-width:95%;padding-left:10px}#tool-state button{font-size:9px;padding:5px 9px}#object-cat{width:80px;height:80px}}
+
+@media(max-width:400px){.brand{font-size:21px}.brand small{font-size:5px;letter-spacing:1px}.brand-cat{width:30px;height:32px}.header-right{gap:5px}.header-right .icon-button{width:35px;height:40px;min-height:40px;font-size:18px}.heart-wallet{padding:7px 9px;font-size:10px}}

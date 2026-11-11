@@ -39,3 +39,17 @@ test('a hungry cat finds a stocked bowl without needing a menu',async({page})=>{
  await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cozy-cat-apartment:v2')!).needs.food),{timeout:6000}).toBeGreaterThan(15);
  expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('cozy-cat-apartment:v2')!).hearts)).toBe(6);
 });
+
+test('sound starts on a gesture, produces audio, mutes, and persists',async({page})=>{
+ await page.addInitScript(()=>{
+  const w=window as any,Native=window.AudioContext,connect=AudioNode.prototype.connect;
+  w.AudioContext=class extends Native{constructor(){super();w.__context=this;}};
+  AudioNode.prototype.connect=function(...args:any[]){if(args[0] instanceof AudioDestinationNode)w.__master=this;return (connect as any).apply(this,args);};
+ });
+ await page.goto('/v2/');await expect(page.getByRole('button',{name:'Mute sound',exact:true})).toHaveAttribute('aria-pressed','false');
+ await page.getByRole('button',{name:'Come on in'}).click();await expect(page.locator('#mute')).toHaveAttribute('data-audio-state','playing');
+ const rms=()=>page.evaluate(async()=>{const w=window as any,c=w.__context as AudioContext,master=w.__master as GainNode,analyser=c.createAnalyser();master.connect(analyser);await new Promise(r=>setTimeout(r,250));const values=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(values);master.disconnect(analyser);return Math.sqrt(values.reduce((a,b)=>a+b*b,0)/values.length);});
+ expect(await rms()).toBeGreaterThan(.0001);
+ await page.getByRole('button',{name:'Mute sound',exact:true}).click();await expect(page.locator('#mute')).toHaveAttribute('data-audio-state','muted');expect(await rms()).toBeLessThan(.0001);
+ await page.reload();await expect(page.getByRole('button',{name:'Enable sound',exact:true})).toHaveAttribute('aria-pressed','true');
+});
