@@ -27,6 +27,7 @@ export class ApartmentArt{
   this.extraFloors(g);
   for(const old of this.furnishings)old.destroy();this.furnishings=[];
   for(const f of this.layout.fixtures){const fg=this.scene.add.graphics().setDepth(f.rect.y+f.rect.h);this.drawFixture(fg,f,state);this.furnishings.push(fg);}
+  const phone=this.scene.add.graphics().setDepth(433);phone.fillStyle(0x465755);phone.fillRoundedRect(179,352,14,25,3);phone.fillStyle(0xa6c6b9);phone.fillRect(181,355,10,17);this.furnishings.push(phone);
   this.drawWindowFrame();this.lastStyle=JSON.stringify(state.equipped);
  }
  private extraFloors(g:Phaser.GameObjects.Graphics){
@@ -40,6 +41,8 @@ export class ApartmentArt{
   const {x,y,w,h}=f.rect,z=f.height;
   const r=(a:number,b:number,c:number,d:number,col:number,alpha=1)=>{g.fillStyle(col,alpha);g.fillRect(a,b,c,d);};
   const ellipse=(cx:number,cy:number,ww:number,hh:number,col:number,a=1)=>{g.fillStyle(col,a);g.fillEllipse(cx,cy,ww,hh);};
+  if(f.kind==='cabinet'){r(x,y-z,w,h+z,0x8b6c48);r(x+4,y-z+4,w-8,h+z-8,0xc6a97c);r(x+8,y-z+8,w-16,22,0x8c7150);r(x+8,y-z+35,w-16,29,0x8c7150);for(let yy=y-z+65;yy<y+h-6;yy+=6)r(x+8,yy,w-16,2,0x9d8058);r(x+18,y-z+14,13,8,0x82c7d0);r(x+18,y-z+43,12,14,0xd6b57e);r(x+5,y+h-4,5,9,0x6d5841);r(x+w-10,y+h-4,5,9,0x6d5841);return;}
+  if(f.kind==='fridge'){r(x,y-z,w,h+z,0x929d88);r(x+3,y-z+3,w-6,h+z-8,0xdde2c9);r(x+5,y-z+42,w-10,2,0xabb69b);r(x+7,y-z+52,3,26,0x89957d);r(x+15,y-z+60,26,34,0xf9e9bb);r(x+24,y-z+57,8,6,0xc88875);for(let i=0;i<3;i++)r(x+19,y-z+69+i*6,15-i*2,1,0xb5ac82);return;}
   if(f.kind==='wall'){r(x,y-z,w,h+z,0xbfb294);r(x,y-z,w,7,0xeee0bf);r(x,y+h-6,w,6,0x8c7959);return;}
   r(x+5,y+h-8,w,h>80?20:15,0x6c5843,.14);
   if(f.kind==='sofa'){

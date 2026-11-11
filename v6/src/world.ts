@@ -1,12 +1,14 @@
 export interface Point{x:number;y:number}
 export interface Rect extends Point{w:number;h:number}
-export interface Fixture{id:string;kind:'sofa'|'bench'|'bookcase'|'table'|'bowls'|'tools'|'counter'|'bed'|'chair'|'wall'|'plantTable';rect:Rect;height:number;approach:Point;surface?:Point;room:string}
+export interface Fixture{id:string;kind:'sofa'|'bench'|'bookcase'|'table'|'bowls'|'tools'|'counter'|'bed'|'chair'|'wall'|'plantTable'|'cabinet'|'fridge';rect:Rect;height:number;approach:Point;surface?:Point;room:string}
 export interface Layout{width:number;height:number;bounds:Rect;fixtures:Fixture[];rooms:{name:string;rect:Rect}[];expanded:boolean}
 export const TILE=32,OWNER_RADIUS=12,CAT_RADIUS=8;
 // One visual scale: adult ~78 px tall, cat ~30 px body, two-seat sofa 160 px wide.
 export const OWNER_SCALE=2,CAT_SCALE=.95;
 export function createLayout():Layout{
  const fixtures:Fixture[]=[
+ {id:'cabinet',kind:'cabinet',rect:{x:80,y:384,w:48,h:48},height:48,approach:{x:112,y:464},room:'Living room'},
+ {id:'fridge',kind:'fridge',rect:{x:832,y:176,w:48,h:96},height:40,approach:{x:848,y:304},room:'Kitchen'},
  {id:'sofa',kind:'sofa',rect:{x:128,y:272,w:160,h:64},height:32,approach:{x:208,y:368},surface:{x:208,y:288},room:'Living room'},
  {id:'window-seat',kind:'bench',rect:{x:192,y:160,w:160,h:48},height:24,approach:{x:272,y:240},surface:{x:272,y:176},room:'Living room'},
  {id:'bookshelf',kind:'bookcase',rect:{x:80,y:176,w:80,h:40},height:64,approach:{x:112,y:256},room:'Living room'},
