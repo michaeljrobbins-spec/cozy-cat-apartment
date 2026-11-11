@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import {event as journeyEvent,type Event} from './journey';
 import {OBJECT_NAMES} from './signals';
 import {routine,SOCIAL_SECONDS,VISIT_SECONDS,mayVisit,visitFinished} from './behavior';
 import {type Save,advanceClock,clockHands,complete,accepts,mood,clamp,tomorrow} from './care';
@@ -7,7 +8,7 @@ import {ApartmentArt} from './room';
 import {installOwner,installCat,ownerKey,type Direction,type OwnerPose,type CatPose} from './sprites';
 export type Tool='hands'|'brush'|'wand';
 export interface Snapshot{owner:Point;cat:Point;ownerPose:OwnerPose;catPose:CatPose;ownerFrame:string;catFrame:string;clock:{minute:number;hour:number};minutes:number;room:string;zoom:number;left:number;top:number;width:number;height:number;seated:boolean;catBehavior:string;tool:Tool;pounces:number;ownerBusy:boolean;catDisplay:Point}
-export interface Hooks{ready:()=>void;change:(s:Save)=>void;snapshot:(s:Snapshot)=>void;sound:(kind:string)=>void}
+export interface Hooks{ready:()=>void;change:(s:Save)=>void;snapshot:(s:Snapshot)=>void;sound:(kind:string)=>void;notice?:(message:string)=>void}
 interface Resident{point:Point;sprite:Phaser.GameObjects.Sprite;shadow:Phaser.GameObjects.Ellipse;path:Point[];direction:Direction}
 interface Timed{elapsed:number;duration:number;done:()=>void;kind:string}
 interface Hop{from:Point;to:Point;elapsed:number;done:()=>void}
@@ -16,10 +17,10 @@ export class Home extends Phaser.Scene{
  private owner!:Resident;private cat!:Resident;private ownerPose:OwnerPose='idle';private catPose:CatPose='sit';
  private ownerNav=new Navigator(LAYOUT,OWNER_RADIUS);private catNav=new Navigator(LAYOUT,CAT_RADIUS);
  private inputVector={x:0,y:0};private ownerTexture='';private saveElapsed=0;private snapshotElapsed=0;private footElapsed=0;
- private hovered?:string;private marker!:Phaser.GameObjects.Graphics;private effects!:Phaser.GameObjects.Graphics;private markerPoint?:Point;private markerLife=0;
+ private guideTarget?:string;private walked=0;private watched=0;private quietFor=0;private hovered?:string;private marker!:Phaser.GameObjects.Graphics;private effects!:Phaser.GameObjects.Graphics;private markerPoint?:Point;private markerLife=0;
  private ownerGoal?:Point;private catGoal?:Point;private ownerArrived?:()=>void;private catArrived?:()=>void;private ownerTask?:Timed;private catTask?:Timed;private tool:Tool='hands';
  private queuedWalk?:Point;private hiding?:Fixture;private lapTime=0;private seat?:Fixture;private catSurface?:Fixture;private lap=false;private hop?:Hop;private jumpDisplay?:Point;
- private lastCall=-60000;private nextVisit=40000;private visitUntil=0;private visitAnchor?:Point;private socialDone=false;private brainTime=0;private ownerIdle=0;private catRest=12000;private choice=0;private behavior='wandering';private reserved=false;
+ private careQueue:('food'|'water')[]=[];private lastCall=-60000;private nextVisit=40000;private visitUntil=0;private visitAnchor?:Point;private socialDone=false;private brainTime=0;private ownerIdle=0;private catRest=12000;private choice=0;private behavior='wandering';private reserved=false;
  private calmTime=0;private lastRub=-15000;private lastMeow=-15000;private expression='soft';
  private toy:Point={x:430,y:620};private toyUntil=0;private toyReady=0;private toyRevision=0;private consumedToy=0;private pounces=0;private pounce?:{from:Point;to:Point;elapsed:number};
  private sparkles:{x:number;y:number;life:number;color:number}[]=[];private lastRefusal=-3000;
@@ -51,9 +52,9 @@ export class Home extends Phaser.Scene{
  private useFixture(f:Fixture){
   if(f.id==='food'||f.id==='water'){
    this.owner.direction='up';this.ownerTask={kind:f.id,elapsed:0,duration:1450,done:()=>{
-    this.state={...this.state,[f.id]:3};this.changed();this.art.build(this.state);this.hooks.sound('refill');this.burst({x:f.rect.x+f.rect.w/2,y:f.rect.y+16},0xe7cea0);
+    this.state={...this.state,[f.id]:3};this.record(f.id==='food'?'refillFood':'refillWater');this.art.build(this.state);this.hooks.sound('refill');this.burst({x:f.rect.x+f.rect.w/2,y:f.rect.y+16},0xe7cea0);
     const aside=this.freeNear({x:f.approach.x+64,y:f.approach.y+32},this.ownerNav);this.owner.path=this.ownerNav.path(this.owner.point,aside);
-    if(mood(this.state)!=='overwhelmed')this.goCat(f.approach,()=>{this.cat.direction='up';this.startCatTask(f.id==='food'?'eat':'drink',2700,()=>{this.finish(f.id==='food'?'eat':'drink');this.art.build(this.state);});});
+    if(!this.careQueue.includes(f.id as 'food'|'water'))this.careQueue.push(f.id as 'food'|'water');this.serveNext();
    }};return;
   }
   if(f.kind==='sofa'||f.kind==='chair'){
@@ -68,8 +69,14 @@ export class Home extends Phaser.Scene{
   if(f.kind==='tools'){this.approach('brush');return;}
   this.ownerTask={kind:'pause',elapsed:0,duration:1000,done:()=>{this.hooks.sound('company');}};
  }
+ private serveNext(){
+  if(this.catTask||this.catArrived||this.hop||this.pounce||this.reserved||this.catSurface||this.isSulking())return false;
+  while(this.careQueue.length){const id=this.careQueue.shift()!;if(this.state.needs[id]>=90)continue;const f=LAYOUT.fixtures.find(f=>f.id===id)!;
+   this.goCat(f.approach,()=>{this.cat.direction='up';this.startCatTask(id==='food'?'eat':'drink',2700,()=>{this.finish(id==='food'?'eat':'drink');this.art.build(this.state);});});return true;
+  }return false;
+ }
  private visitCat(){
-  if(this.ownerTask)return;if(this.tool==='wand'){this.keyboardToy();return;}if(this.isSulking()){this.refuse();return;}
+  if(this.ownerTask||this.catTask?.kind==='eat'||this.catTask?.kind==='drink'||this.catPose==='sleep')return;if(this.tool==='wand'){this.keyboardToy();return;}if(this.isSulking()){this.refuse();return;}
   this.reserved=true;this.cat.path=[];this.catTask=undefined;this.catArrived=undefined;if(this.catSurface){const from=this.catDisplay();this.catSurface=undefined;this.hop={from,to:{...this.cat.point},elapsed:0,done:()=>{this.jumpDisplay=undefined;this.animateCat('sit');}};}
   const target=this.freeNear({x:this.cat.point.x-48,y:this.cat.point.y+8},this.ownerNav);
   this.goOwner(target,()=>{
@@ -88,7 +95,16 @@ export class Home extends Phaser.Scene{
   }};});
  }
  private startCatTask(kind:string,duration:number,done:()=>void){this.catTask={kind,duration,elapsed:0,done};this.behavior=kind==='rub'?'rubbing':kind;this.animateCat(kind==='drink'?'eat':kind==='sleep'?'sleep':kind==='rub'?'rub':'eat');this.hooks.sound(kind==='rub'?'company':kind);}
- private finish(activity:Parameters<typeof complete>[1],player=true){const result=complete(this.state,activity,player);this.state=result.state;this.changed();if(result.earned)this.burst(this.catDisplay(),0xdca48e,10);this.hooks.sound('complete');}
+ private finish(activity:Parameters<typeof complete>[1],player=true){
+  const before=this.state,result=complete(this.state,activity,player);this.state=result.state;
+  if(player&&result.earned>0){this.record('care');if(activity==='eat')this.record('ate');else if(activity==='drink')this.record('drank');}
+  if(player&&accepts(before,activity)){if(activity==='brush'||activity==='company')this.record('affection');else if(activity==='play')this.record('played');}
+  if(player&&!result.earned&&activity==='company'&&this.state.tension<before.tension)this.record('care');
+  this.changed();if(result.earned)this.burst(this.catDisplay(),0xdca48e,10);this.hooks.sound('complete');
+ }
+ record(kind:Event){const result=journeyEvent(this.state,kind);this.state=result.state;this.changed();for(const message of result.messages)this.hooks.notice?.(message);}
+ guide(id?:string){this.guideTarget=id;}
+
  private changed(){this.hooks.change(this.state);}
  private isSulking(){return mood(this.state)==='overwhelmed'||mood(this.state)==='wary';}
  private refuse(){
@@ -128,6 +144,7 @@ export class Home extends Phaser.Scene{
   this.ownerIdle=moving?0:this.ownerIdle+dt;this.brainTime+=dt;if(this.brainTime<600)return;this.brainTime=0;
   const feeling=mood(this.state);this.expression=feeling==='overwhelmed'?'flat':feeling==='wary'?'wary':'soft';
   if(this.catTask||this.hop||this.pounce||this.reserved||this.catArrived)return;
+  if(this.serveNext())return;
   if(this.isSulking()){this.behavior='sulking';if(distance(this.cat.point,this.owner.point)<120&&!this.cat.path.length)this.refuse();return;}
   if(this.tool==='wand'&&this.toyUntil>this.time.now&&this.toyRevision>this.consumedToy){
    this.behavior='playing';if(this.catSurface){this.goCat(this.toy);return;}
@@ -180,7 +197,13 @@ export class Home extends Phaser.Scene{
    else if(this.catTask){this.catTask.elapsed+=dt;if(this.catTask.elapsed>=this.catTask.duration){const task=this.catTask;this.catTask=undefined;task.done();this.reserved=false;this.catRest=5000;if(!this.lap&&!this.catSurface)this.animateCat('sit');}}
    else if(!this.lap&&!this.catSurface&&!this.reserved){const catMoving=this.followPath(this.cat,this.catNav,this.state.personality==='Playful'?134:112,dt);if(catMoving)this.animateCat('walk');else{if(this.catPose==='walk')this.animateCat('sit');if(this.catArrived&&!this.cat.path.length){if(this.catGoal&&distance(this.cat.point,this.catGoal)>12)this.cat.path=this.catNav.path(this.cat.point,this.catGoal);else{const action=this.catArrived;this.catArrived=undefined;action();}}}}
    this.brain(dt,moving);this.calmTime+=dt;if(this.calmTime>1000){this.calmTime=0;if(this.state.tension>0&&this.toyUntil<this.time.now){this.state.tension=clamp(this.state.tension-3);}}
-   this.state.ownerPosition={...this.owner.point};this.saveElapsed+=dt;this.footElapsed+=dt;if(moving&&this.footElapsed>330){this.footElapsed=0;this.hooks.sound('step');}if(this.saveElapsed>5000){this.saveElapsed=0;this.changed();}
+   this.state.ownerPosition={...this.owner.point};
+   if(moving&&this.state.journey.tutorial.status==='active'&&this.state.journey.tutorial.step===0){this.walked+=172*dt/1000;if(this.walked>40){this.walked=0;this.record('walk');}}
+   const view=this.cameras.main.worldView,cat=this.catDisplay(),visible=cat.x>=view.x&&cat.x<=view.right&&cat.y>=view.y&&cat.y<=view.bottom;
+   this.watched=visible?this.watched+dt:0;if(this.watched>=3500){this.watched=0;this.record('observe');}
+   const quiet=!moving&&this.tool==='hands'&&!this.ownerTask&&!this.reserved&&this.toyUntil<this.time.now;
+   this.quietFor=quiet?this.quietFor+dt:0;if(this.quietFor>=7000){this.quietFor=0;this.record('quiet');}
+this.saveElapsed+=dt;this.footElapsed+=dt;if(moving&&this.footElapsed>330){this.footElapsed=0;this.hooks.sound('step');}if(this.saveElapsed>5000){this.saveElapsed=0;this.changed();}
   }
   this.place(this.owner);this.place(this.cat);
   if(this.seat?.surface){this.owner.sprite.setPosition(this.seat.surface.x,this.seat.surface.y).setDepth(this.seat.rect.y+this.seat.rect.h+2);this.owner.shadow.setVisible(false);}else this.owner.shadow.setVisible(true);
@@ -196,7 +219,7 @@ export class Home extends Phaser.Scene{
   const g=this.effects;g.clear();
   const nearby=LAYOUT.fixtures.filter(f=>(OBJECT_NAMES[f.id]||f.id==='tools')&&distance(this.owner.point,f.approach)<100&&!(this.seat===f));
   const hover=this.hovered==='brush'||this.hovered==='wand'?'tools':this.hovered==='treat'?'coffee-table':this.hovered;
-  const fixtures=[...new Set([...nearby,...LAYOUT.fixtures.filter(f=>f.id===hover)])];
+  const fixtures=[...new Set([...nearby,...LAYOUT.fixtures.filter(f=>f.id===hover||f.id===this.guideTarget)])];
   for(const f of fixtures){const r=f.rect;g.lineStyle(5,0xfff0c5,.13);g.strokeRoundedRect(r.x-3,r.y-f.height-3,r.w+6,r.h+f.height+6,4);g.lineStyle(1.5,0xffe6a6,.8);g.strokeRoundedRect(r.x-3,r.y-f.height-3,r.w+6,r.h+f.height+6,4);}
 this.sparkles=this.sparkles.filter(s=>s.life>0);for(const s of this.sparkles){s.life-=dt/1200;if(!this.state.reducedMotion)s.y-=dt/65;g.fillStyle(s.color,s.life);g.fillRect(s.x,s.y,4,4);g.fillRect(s.x+1,s.y-2,2,8);}
   if(this.seat?.surface&&!this.lap){const a=this.seat.surface;g.fillStyle(0x7f9272);g.fillRect(a.x-18,a.y-35,36,22);g.fillStyle(0xe7dab6);g.fillRect(a.x-15,a.y-32,29,16);g.fillStyle(0x9eab85);g.fillRect(a.x-1,a.y-32,2,16);}
