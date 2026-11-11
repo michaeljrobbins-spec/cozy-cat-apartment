@@ -17,7 +17,7 @@ Chirps: short, voiced rising/falling syllables and double chirps.
 Hisses: soft, shaped, unvoiced airflow with a gradual attack.
 No external sample source or recording license applies to these sounds.
 
-Original score, city ambience, rain and care effects
+Original score, city ambience, rain, distant thunder and care effects
 --------------------------------------------------
 Source: src/audio.ts
 Locally generated with Web Audio; no external sample recordings.

@@ -3,6 +3,7 @@ export type Thought='food'|'water'|'play'|'attention'|'nap'|'space';
 export const THOUGHT_LABELS:Record<Thought,string>={food:'Food',water:'Fresh water',play:'Play',attention:'Company',nap:'Rest',space:'Some space'};
 export const OBJECT_NAMES:Record<string,string>={food:'Food bowl',water:'Water bowl',brush:'Brush',wand:'Toy wand',sofa:'Sofa','window-seat':'Window seat',bookshelf:'Books','coffee-table':'Tea table',treat:'Treat jar','kitchen-counter':'Kitchen counter','kitchen-table':'Dining table',bed:'Bed','nook-chair':'Reading chair','nook-books':'Books','bedroom-books':'Books',cat:'Your cat'};
 export function thoughts(s:Save,pose:string,behavior:string):Thought[]{
+ if(s.adventure.active?.kind==='storm')return ['space'];
  if(s.tension>=65||(s.personality==='Shy'&&s.tension>=35))return ['space'];
  if(pose==='sleep')return ['nap'];
  if(s.needs.energy<32)return ['nap'];
