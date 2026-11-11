@@ -4,13 +4,14 @@ import {type Layout,type Fixture,WINDOW,PANES,plantAnchor} from './world';
 export class ApartmentArt{
  private base:Phaser.GameObjects.Graphics;private furnishings:Phaser.GameObjects.Graphics[]=[];
  private exterior:Phaser.GameObjects.Graphics;private frame:Phaser.GameObjects.Graphics;private clock:Phaser.GameObjects.Graphics;private light:Phaser.GameObjects.Graphics;private dust:Phaser.GameObjects.Graphics;private maskShape:Phaser.GameObjects.Graphics;
- private lastStyle='';private warmth=0;
+ private roomLabels:Phaser.GameObjects.Text[]=[];private lastStyle='';private warmth=0;
  constructor(private scene:Phaser.Scene,public layout:Layout,state:Save){
   this.base=scene.add.graphics().setDepth(-100);this.exterior=scene.add.graphics().setDepth(-40);this.frame=scene.add.graphics().setDepth(-30);this.clock=scene.add.graphics().setDepth(-20);this.light=scene.add.graphics().setDepth(5000);this.dust=scene.add.graphics().setDepth(5001);
   this.maskShape=scene.make.graphics({x:0,y:0},false);this.maskShape.fillStyle(0xffffff);for(const p of PANES)this.maskShape.fillRect(p.x,p.y,p.w,p.h);this.exterior.setMask(this.maskShape.createGeometryMask());
   this.build(state);
  }
  build(state:Save){
+  for(const label of this.roomLabels)label.destroy();this.roomLabels=[];
   const g=this.base;g.clear();const r=(x:number,y:number,w:number,h:number,color:number,a=1)=>{g.fillStyle(color,a);g.fillRect(x,y,w,h);};
   r(0,0,this.layout.width,this.layout.height,0xe2dfd1);
   const b=this.layout.bounds;r(b.x-12,b.y-14,b.w+24,b.h+30,0x8b775b,.18);r(b.x,b.y,b.w,b.h,0xc8a47b);
@@ -35,7 +36,7 @@ export class ApartmentArt{
   g.fillStyle(0xb9b08b,.32);g.fillRect(1024,736,832,544);
   g.fillStyle(0xa9b198);g.fillRect(1344,912,144,256);g.lineStyle(4,0xe5d9b9);g.strokeRect(1351,920,130,240);
   g.fillStyle(0xc7b598);g.fillRect(112,976,688,256);g.lineStyle(5,0xebd5ae);g.strokeRect(120,984,672,240);
-  const label=(text:string,x:number,y:number)=>{const t=this.scene.add.text(x,y,text,{fontFamily:'Georgia',fontSize:'17px',color:'#9b987f'}).setDepth(-70).setAlpha(.55);this.base.once('destroy',()=>t.destroy());};
+  const label=(text:string,x:number,y:number)=>{const t=this.scene.add.text(x,y,text,{fontFamily:'Georgia',fontSize:'17px',color:'#9b987f'}).setDepth(-70).setAlpha(.55);this.roomLabels.push(t);};
   label('the kitchen',1570,560);label('a quiet corner',480,1210);label('sweet dreams',1635,1220);
  }
  private drawFixture(g:Phaser.GameObjects.Graphics,f:Fixture,state:Save){
@@ -55,7 +56,7 @@ export class ApartmentArt{
   if(f.kind==='table'||f.kind==='plantTable'){
    r(x+8,y+h-z,8,z,0x8b6849);r(x+w-16,y+h-z,8,z,0x8b6849);r(x,y-z,w,h,0xc19b6b);r(x+3,y-z+3,w-6,h-6,0xd3b37f);r(x,y+h-z,w,7,0xa68057);r(x+8,y-z+14,w-16,1,0xe2c28e);
    if(f.kind==='plantTable'){const a=plantAnchor(f);this.plant(g,a.x,a.y,state.equipped.plant==='palm'?0x5e8660:0x75905b);}
-   else{r(x+18,y-z+11,39,28,0x8d9f81);r(x+21,y-z+13,33,23,0xe7d8b8);r(x+19,y-z+10,36,4,0x9aa78a);ellipse(x+w-24,y-z+24,17,14,0xece0c4);ellipse(x+w-24,y-z+22,12,8,0x9b7658);g.lineStyle(2,0xece0c4);g.strokeCircle(x+w-14,y-z+23,4);}return;
+   else{r(x+18,y-z+11,39,28,0x8d9f81);r(x+21,y-z+13,33,23,0xe7d8b8);r(x+19,y-z+10,36,4,0x9aa78a);ellipse(x+w-24,y-z+24,17,14,0xece0c4);ellipse(x+w-24,y-z+22,12,8,0x9b7658);g.lineStyle(2,0xece0c4);g.strokeCircle(x+w-14,y-z+23,4);if(f.id==='coffee-table'){r(x+57,y-z+30,19,25,0xc3a47d);r(x+55,y-z+27,23,6,0x8a9c78);r(x+60,y-z+37,13,11,0xe7d9b9);r(x+64,y-z+39,5,7,0xb58a5b);}}return;
   }
   if(f.kind==='bookcase'){
    r(x,y-z,w,h+z,0x8b6f4d);r(x+7,y-z+6,w-14,h+z-12,0xb59568);r(x+11,y-z+12,w-22,h+z-26,0x887250);
@@ -89,8 +90,7 @@ export class ApartmentArt{
   for(let j=0;j<4;j++){g.fillStyle(color);g.fillRect(x-25+j*4,y-35-j*12,23-j*2,7);g.fillRect(x+2,y-42-j*12,23-j*2,7);}
  }
  private drawWindowFrame(){
-  const g=this.frame;g.clear();g.fillStyle(0x8c7454);g.fillRect(WINDOW.x-6,WINDOW.y-6,WINDOW.w+12,WINDOW.h+12);g.fillStyle(0xf2e5c3);g.fillRect(WINDOW.x,WINDOW.y,WINDOW.w,WINDOW.h);
-  for(const pane of PANES){g.fillStyle(0xffffff,0);/* panes remain open to the lower exterior layer */}
+  const g=this.frame;
   // Only frame rails are painted over the sky, never a full opaque pane rectangle.
   g.clear();g.lineStyle(8,0x8c7454);g.strokeRect(WINDOW.x-3,WINDOW.y-3,WINDOW.w+6,WINDOW.h+6);g.lineStyle(6,0xf1e4c2);g.strokeRect(WINDOW.x+3,WINDOW.y+3,WINDOW.w-6,WINDOW.h-6);g.fillStyle(0xf1e4c2);g.fillRect(473,43,10,82);g.fillRect(340,79,279,9);g.fillStyle(0xf5e5bf);g.fillRect(328,129,304,7);g.fillStyle(0xb3976d);g.fillRect(334,136,292,4);
  }

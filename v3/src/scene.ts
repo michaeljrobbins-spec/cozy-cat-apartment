@@ -15,8 +15,8 @@ export class Home extends Phaser.Scene{
  private ownerNav=new Navigator(LAYOUT,OWNER_RADIUS);private catNav=new Navigator(LAYOUT,CAT_RADIUS);
  private inputVector={x:0,y:0};private ownerTexture='';private saveElapsed=0;private snapshotElapsed=0;private footElapsed=0;
  private marker!:Phaser.GameObjects.Graphics;private effects!:Phaser.GameObjects.Graphics;private markerPoint?:Point;private markerLife=0;
- private ownerArrived?:()=>void;private catArrived?:()=>void;private ownerTask?:Timed;private catTask?:Timed;private tool:Tool='hands';
- private seat?:Fixture;private catSurface?:Fixture;private lap=false;private hop?:Hop;private jumpDisplay?:Point;
+ private ownerGoal?:Point;private catGoal?:Point;private ownerArrived?:()=>void;private catArrived?:()=>void;private ownerTask?:Timed;private catTask?:Timed;private tool:Tool='hands';
+ private queuedWalk?:Point;private hiding?:Fixture;private lapTime=0;private seat?:Fixture;private catSurface?:Fixture;private lap=false;private hop?:Hop;private jumpDisplay?:Point;
  private brainTime=0;private ownerIdle=0;private catRest=3000;private choice=0;private behavior='wandering';private reserved=false;
  private calmTime=0;private lastRub=-15000;private lastMeow=-15000;private expression='soft';
  private toy:Point={x:430,y:620};private toyUntil=0;private toyReady=0;private toyRevision=0;private consumedToy=0;private pounces=0;private pounce?:{from:Point;to:Point;elapsed:number};
@@ -34,13 +34,13 @@ export class Home extends Phaser.Scene{
  private animateOwner(pose:OwnerPose){this.ownerPose=pose;const key=`${this.ownerTexture}-${pose}-${this.owner.direction}`;if(this.owner.sprite.anims.currentAnim?.key!==key)this.owner.sprite.play(key);}
  private animateCat(pose:CatPose){this.catPose=pose;const key=`cat-${this.state.coat}-${this.expression}-${pose}-${this.cat.direction}`;if(this.cat.sprite.anims.currentAnim?.key!==key)this.cat.sprite.play(key);}
  setInput(x:number,y:number){this.inputVector={x,y};if(x||y){this.stand();if(!this.ownerTask)this.reserved=false;this.owner.path=[];this.ownerArrived=undefined;}}
- walkTo(point:Point){if(!this.owner||this.ownerTask)return;this.stand();this.reserved=false;this.ownerArrived=undefined;this.owner.path=this.ownerNav.path(this.owner.point,point);this.markerPoint=this.owner.path.at(-1);this.markerLife=1;}
- private goOwner(point:Point,done:()=>void){if(this.ownerTask)return;this.stand();this.owner.path=this.ownerNav.path(this.owner.point,point);this.ownerArrived=done;}
- private goCat(point:Point,done?:()=>void){if(this.hop)return;if(this.catSurface||this.lap){const from=this.catDisplay();this.catSurface=undefined;this.lap=false;this.animateCat('pounce');this.hop={from,to:{...this.cat.point},elapsed:0,done:()=>{this.jumpDisplay=undefined;this.goCat(point,done);}};return;}this.cat.path=this.catNav.path(this.cat.point,point);this.catArrived=done;}
+ walkTo(point:Point){if(!this.owner)return;if(this.ownerTask){this.queuedWalk=point;return;}this.stand();this.reserved=false;this.ownerArrived=undefined;this.owner.path=this.ownerNav.path(this.owner.point,point);this.markerPoint=this.owner.path.at(-1);this.markerLife=1;}
+ private goOwner(point:Point,done:()=>void){if(this.ownerTask)return;this.stand();this.ownerGoal=point;this.owner.path=this.ownerNav.path(this.owner.point,point);this.ownerArrived=done;}
+ private goCat(point:Point,done?:()=>void){if(this.hop)return;if(this.catSurface||this.lap){const from=this.catDisplay();this.catSurface=undefined;this.lap=false;this.animateCat('pounce');this.hop={from,to:{...this.cat.point},elapsed:0,done:()=>{this.jumpDisplay=undefined;this.goCat(point,done);}};return;}this.hiding=undefined;this.catGoal=point;this.cat.path=this.catNav.path(this.cat.point,point);this.catArrived=done;}
  approach(id:string){
   if(!this.activePlay||this.ownerTask)return;
-  if(id==='cat'){this.visitCat();return;}
-  if(id==='brush'||id==='wand'){const tools=LAYOUT.fixtures.find(f=>f.id==='tools')!;this.goOwner(tools.approach,()=>{this.ownerTask={kind:'pickup',elapsed:0,duration:650,done:()=>{this.tool=id;this.hooks.sound('tool');}};});return;}
+  if(id==='cat'){this.visitCat();return;}if(id==='treat'){this.offerTreat();return;}
+  if(id==='brush'||id==='wand'){const tools=LAYOUT.fixtures.find(f=>f.id==='tools')!;this.goOwner(tools.approach,()=>{this.owner.direction='left';this.ownerTask={kind:'pickup',elapsed:0,duration:650,done:()=>{this.tool=id;this.hooks.sound('tool');}};});return;}
   const f=LAYOUT.fixtures.find(f=>f.id===id);if(!f)return;
   this.goOwner(f.approach,()=>this.useFixture(f));
  }
@@ -77,11 +77,19 @@ export class Home extends Phaser.Scene{
    this.ownerTask={kind:this.tool==='brush'?'brush':'company',elapsed:0,duration:2600,done:()=>{this.finish(this.tool==='brush'?'brush':'company');this.reserved=false;this.catRest=5000;this.animateCat('sit');}};
   });
  }
+ private offerTreat(){
+  const id=Object.keys(this.state.treats).find(id=>this.state.treats[id]>0);if(!id){this.hooks.sound('empty-jar');return;}const table=LAYOUT.fixtures.find(f=>f.id==='coffee-table')!;
+  this.goOwner(table.approach,()=>{this.owner.direction='up';this.ownerTask={kind:'treat',elapsed:0,duration:1000,done:()=>{
+   if(this.isSulking()){this.refuse();return;}
+   const near=this.freeNear({x:this.owner.point.x+45,y:this.owner.point.y+8},this.catNav);
+   this.goCat(near,()=>{if(!(this.state.treats[id]>0))return;this.state.treats[id]--;this.state.needs.comfort=clamp(this.state.needs.comfort+15);this.changed();this.owner.direction='right';this.ownerTask={kind:'company',elapsed:0,duration:1500,done:()=>this.hooks.sound('company')};this.startCatTask('eat',1800,()=>{this.animateCat('sit');this.burst(this.cat.point,0xe9cfa4);});});
+  }};});
+ }
  private startCatTask(kind:string,duration:number,done:()=>void){this.catTask={kind,duration,elapsed:0,done};this.behavior=kind==='rub'?'rubbing':kind;this.animateCat(kind==='drink'?'eat':kind==='sleep'?'sleep':kind==='rub'?'rub':'eat');this.hooks.sound(kind==='rub'?'company':kind);}
  private finish(activity:Parameters<typeof complete>[1],player=true){const result=complete(this.state,activity,player);this.state=result.state;this.changed();if(result.earned)this.burst(this.catDisplay(),0xdca48e,10);this.hooks.sound('complete');}
  private changed(){this.hooks.change(this.state);}
  private isSulking(){return mood(this.state)==='overwhelmed'||mood(this.state)==='wary';}
- private refuse(){if(this.time.now-this.lastRefusal<2000)return;this.lastRefusal=this.time.now;this.hooks.sound('refuse');this.reserved=false;this.behavior='sulking';this.goCat(this.freeNear({x:752,y:320},this.catNav),()=>{this.cat.direction='up';this.animateCat('sit');this.catRest=8000;});}
+ private refuse(){if(this.time.now-this.lastRefusal<2000)return;this.lastRefusal=this.time.now;this.hooks.sound('refuse');this.reserved=false;this.behavior='sulking';const bed=LAYOUT.fixtures.find(f=>f.id==='bed'),bedroom=bed&&(this.cat.point.x>1024||this.owner.point.x>1024);this.goCat(this.freeNear(bedroom?{x:1616,y:1136}:{x:752,y:320},this.catNav),()=>{this.hiding=bedroom?bed:undefined;this.cat.direction='up';this.animateCat(bedroom?'sleep':'sit');this.catRest=8000;});}
  private stand(){
   if(!this.seat)return;this.seat=undefined;this.ownerIdle=0;
   if(this.lap){const from=this.catDisplay();this.lap=false;this.hop={from,to:{...this.cat.point},elapsed:0,done:()=>{this.jumpDisplay=undefined;this.animateCat('sit');}};}
@@ -101,7 +109,7 @@ export class Home extends Phaser.Scene{
  private mount(f:Fixture){
   if(!f.surface)return;const from={...this.cat.point};this.catSurface=f;this.animateCat('pounce');this.hop={from,to:f.surface,elapsed:0,done:()=>{this.jumpDisplay=undefined;this.animateCat('sleep');this.catRest=11000;this.behavior='window nap';this.startCatTask('sleep',7000,()=>this.finish('sleep',false));}};
  }
- private catDisplay():Point{if(this.jumpDisplay)return this.jumpDisplay;if(this.lap&&this.seat?.surface)return {x:this.seat.surface.x,y:this.seat.surface.y-17};return this.catSurface?.surface||this.cat.point;}
+ private catDisplay():Point{if(this.hiding)return {x:this.cat.point.x,y:this.cat.point.y-28};if(this.jumpDisplay)return this.jumpDisplay;if(this.lap&&this.seat?.surface)return {x:this.seat.surface.x,y:this.seat.surface.y-17};return this.catSurface?.surface||this.cat.point;}
  private brain(dt:number,moving:boolean){
   this.ownerIdle=moving?0:this.ownerIdle+dt;this.brainTime+=dt;if(this.brainTime<600)return;this.brainTime=0;
   const feeling=mood(this.state);this.expression=feeling==='overwhelmed'?'flat':feeling==='wary'?'wary':'soft';
@@ -110,7 +118,7 @@ export class Home extends Phaser.Scene{
    this.behavior='sulking';if(distance(this.cat.point,this.owner.point)<145&&!this.cat.path.length)this.refuse();return;
   }
   if(this.seat){
-   if(this.lap){this.behavior='lap';this.animateCat('sleep');return;}
+   if(this.lap){this.behavior='lap';this.animateCat('sleep');this.lapTime+=600;if(this.lapTime>8000){this.lapTime=0;this.finish('sleep',false);}return;}
    if(!this.cat.path.length){const near=this.freeNear({x:this.owner.point.x-40,y:this.owner.point.y},this.catNav);this.behavior='coming for a lap';this.goCat(near,()=>{
     if(!this.seat)return;const from={...this.cat.point},to={x:this.seat.surface!.x,y:this.seat.surface!.y-17};this.animateCat('pounce');this.hop={from,to,elapsed:0,done:()=>{this.jumpDisplay=undefined;this.lap=true;this.behavior='lap';this.animateCat('sleep');this.hooks.sound('company');}};
    });}return;
@@ -133,31 +141,31 @@ export class Home extends Phaser.Scene{
   }
   this.catRest-=600;if(this.catRest<=0&&!this.cat.path.length){this.choice++;this.catRest=6000;
    if(this.choice%4===0){const f=LAYOUT.fixtures.find(f=>f.id==='window-seat')!;this.goCat(f.approach,()=>this.mount(f));return;}
-   const spots=[{x:304,y:688},{x:592,y:336},{x:912,y:656},{x:720,y:560},{x:336,y:464}];this.behavior='exploring';this.goCat(spots[this.choice%spots.length],()=>{this.animateCat(this.choice%2?'groom':'stretch');});
+   const spots=LAYOUT.expanded?[{x:304,y:688},{x:1232,y:432},{x:496,y:1136},{x:1328,y:1056},{x:336,y:464}]:[{x:304,y:688},{x:592,y:336},{x:912,y:656},{x:720,y:560},{x:336,y:464}];this.behavior='exploring';this.goCat(spots[this.choice%spots.length],()=>{this.animateCat(this.choice%2?'groom':'stretch');});
   }
  }
  private direction(dx:number,dy:number):Direction{return Math.abs(dx)>Math.abs(dy)?dx<0?'left':'right':dy<0?'up':'down';}
  private followPath(actor:Resident,nav:Navigator,speed:number,dt:number){while(actor.path.length&&distance(actor.point,actor.path[0])<2)actor.path.shift();const next=actor.path[0];if(!next)return false;const d=distance(actor.point,next),step=Math.min(d,speed*dt/1000),dx=(next.x-actor.point.x)/d*step,dy=(next.y-actor.point.y)/d*step;actor.direction=this.direction(dx,dy);const moved=moveWithCollision(LAYOUT,actor.point,dx,dy,nav.radius);if(distance(moved,actor.point)<.1){actor.path=[];return false;}actor.point=moved;return true;}
  update(time:number,delta:number){
   if(!this.owner)return;const dt=Math.min(50,delta);this.art.update(time,dt,this.state);let moving=false;
-  if(this.activePlay){
+  if(this.activePlay&&!document.hidden){
    this.state.minutes=advanceClock(this.state.minutes,dt/1000);
-   if(this.ownerTask){this.ownerTask.elapsed+=dt;this.animateOwner(this.ownerTask.kind==='company'?'idle':'care');if(this.ownerTask.elapsed>=this.ownerTask.duration){const task=this.ownerTask;this.ownerTask=undefined;task.done();}}
+   if(this.ownerTask){this.ownerTask.elapsed+=dt;this.animateOwner(this.ownerTask.kind==='company'?'idle':'care');if(this.ownerTask.elapsed>=this.ownerTask.duration){const task=this.ownerTask;this.ownerTask=undefined;task.done();if(this.queuedWalk){const target=this.queuedWalk;this.queuedWalk=undefined;this.walkTo(target);}}}
    else if(this.seat)this.animateOwner('sit');else{
     const v=new Phaser.Math.Vector2(this.inputVector.x,this.inputVector.y);if(v.lengthSq()>0){v.normalize().scale(172*dt/1000);const p=moveWithCollision(LAYOUT,this.owner.point,v.x,v.y);moving=distance(p,this.owner.point)>.05;this.owner.point=p;this.owner.direction=this.direction(v.x,v.y);}else moving=this.followPath(this.owner,this.ownerNav,172,dt);
     this.animateOwner(moving?'walk':this.tool==='wand'&&this.toyUntil>time?'play':'idle');
-    if(!moving&&!this.owner.path.length&&this.ownerArrived){const action=this.ownerArrived;this.ownerArrived=undefined;action();}
+    if(!moving&&!this.owner.path.length&&this.ownerArrived){if(this.ownerGoal&&distance(this.owner.point,this.ownerGoal)>12)this.owner.path=this.ownerNav.path(this.owner.point,this.ownerGoal);else{const action=this.ownerArrived;this.ownerArrived=undefined;action();}}
    }
    if(this.hop){const h=this.hop;h.elapsed+=dt;const t=Math.min(1,h.elapsed/700);this.jumpDisplay={x:Phaser.Math.Linear(h.from.x,h.to.x,t),y:Phaser.Math.Linear(h.from.y,h.to.y,t)-Math.sin(t*Math.PI)*32};if(t===1){this.hop=undefined;h.done();}}
    else if(this.pounce){const p=this.pounce;p.elapsed+=dt;const t=Math.min(1,p.elapsed/650),next={x:Phaser.Math.Linear(p.from.x,p.to.x,t),y:Phaser.Math.Linear(p.from.y,p.to.y,t)};this.cat.point=moveWithCollision(LAYOUT,this.cat.point,next.x-this.cat.point.x,next.y-this.cat.point.y,CAT_RADIUS);this.jumpDisplay={x:this.cat.point.x,y:this.cat.point.y-Math.sin(t*Math.PI)*16};if(t===1){this.pounce=undefined;this.jumpDisplay=undefined;this.consumedToy=this.toyRevision;this.pounces++;this.hooks.sound('pounce');this.burst(this.cat.point,0xe7c996);if(this.pounces>=3){this.pounces=0;this.finish('play');}this.animateCat('sit');}}
    else if(this.catTask){this.catTask.elapsed+=dt;if(this.catTask.elapsed>=this.catTask.duration){const task=this.catTask;this.catTask=undefined;task.done();this.reserved=false;this.catRest=5000;if(!this.lap&&!this.catSurface)this.animateCat('sit');}}
-   else if(!this.lap&&!this.catSurface&&!this.reserved){const catMoving=this.followPath(this.cat,this.catNav,this.state.personality==='Playful'?134:112,dt);if(catMoving)this.animateCat('walk');else{if(this.catPose==='walk')this.animateCat('sit');if(this.catArrived&&!this.cat.path.length){const action=this.catArrived;this.catArrived=undefined;action();}}}
+   else if(!this.lap&&!this.catSurface&&!this.reserved){const catMoving=this.followPath(this.cat,this.catNav,this.state.personality==='Playful'?134:112,dt);if(catMoving)this.animateCat('walk');else{if(this.catPose==='walk')this.animateCat('sit');if(this.catArrived&&!this.cat.path.length){if(this.catGoal&&distance(this.cat.point,this.catGoal)>12)this.cat.path=this.catNav.path(this.cat.point,this.catGoal);else{const action=this.catArrived;this.catArrived=undefined;action();}}}}
    this.brain(dt,moving);this.calmTime+=dt;if(this.calmTime>1000){this.calmTime=0;if(this.state.tension>0&&this.toyUntil<this.time.now){this.state.tension=clamp(this.state.tension-3);}}
    this.state.ownerPosition={...this.owner.point};this.saveElapsed+=dt;this.footElapsed+=dt;if(moving&&this.footElapsed>330){this.footElapsed=0;this.hooks.sound('step');}if(this.saveElapsed>5000){this.saveElapsed=0;this.changed();}
   }
   this.place(this.owner);this.place(this.cat);
   if(this.seat?.surface){this.owner.sprite.setPosition(this.seat.surface.x,this.seat.surface.y).setDepth(this.seat.rect.y+this.seat.rect.h+2);this.owner.shadow.setVisible(false);}else this.owner.shadow.setVisible(true);
-  if(this.lap||this.catSurface||this.jumpDisplay){const p=this.catDisplay();this.cat.sprite.setPosition(p.x,p.y).setDepth(this.lap&&this.seat?this.seat.rect.y+this.seat.rect.h+3:this.catSurface?this.catSurface.rect.y+this.catSurface.rect.h+2:2000);this.cat.shadow.setVisible(false);}else this.cat.shadow.setVisible(true);
+  if(this.lap||this.catSurface||this.jumpDisplay||this.hiding){const p=this.catDisplay();this.cat.sprite.setPosition(p.x,p.y).setDepth(this.lap&&this.seat?this.seat.rect.y+this.seat.rect.h+3:this.catSurface?this.catSurface.rect.y+this.catSurface.rect.h+2:this.hiding?this.hiding.rect.y+this.hiding.rect.h-.1:2000);this.cat.shadow.setVisible(false);}else this.cat.shadow.setVisible(true);
   const camera=this.cameras.main;camera.scrollX=Phaser.Math.Linear(camera.scrollX,this.owner.point.x-this.scale.width/2,.08);camera.scrollY=Phaser.Math.Linear(camera.scrollY,this.owner.point.y-90-this.scale.height/2,.08);
   this.drawEffects(dt);
   this.snapshotElapsed+=dt;if(this.snapshotElapsed>90){this.snapshotElapsed=0;this.hooks.snapshot({owner:{...this.owner.point},cat:{...this.cat.point},ownerPose:this.ownerPose,catPose:this.catPose,ownerFrame:String(this.owner.sprite.frame.name),catFrame:String(this.cat.sprite.frame.name),clock:clockHands(this.state.minutes),minutes:this.state.minutes,room:roomAt(LAYOUT,this.owner.point),zoom:camera.zoom,left:camera.worldView.x,top:camera.worldView.y,width:this.scale.width,height:this.scale.height,seated:!!this.seat,catBehavior:this.behavior,tool:this.tool,pounces:this.pounces,ownerBusy:!!this.ownerTask,catDisplay:this.catDisplay()});}
@@ -166,11 +174,12 @@ export class Home extends Phaser.Scene{
  private drawEffects(dt:number){
   this.marker.clear();if(this.markerPoint&&this.markerLife>0){this.markerLife-=dt/900;this.marker.lineStyle(2,0xffefc7,this.markerLife*.7);this.marker.strokeEllipse(this.markerPoint.x,this.markerPoint.y,20,10);}
   const g=this.effects;g.clear();this.sparkles=this.sparkles.filter(s=>s.life>0);for(const s of this.sparkles){s.life-=dt/1200;if(!this.state.reducedMotion)s.y-=dt/65;g.fillStyle(s.color,s.life);g.fillRect(s.x,s.y,4,4);g.fillRect(s.x+1,s.y-2,2,8);}
+  if(this.seat?.surface&&!this.lap){const a=this.seat.surface;g.fillStyle(0x7f9272);g.fillRect(a.x-18,a.y-35,36,22);g.fillStyle(0xe7dab6);g.fillRect(a.x-15,a.y-32,29,16);g.fillStyle(0x9eab85);g.fillRect(a.x-1,a.y-32,2,16);}
   const hand={x:this.owner.point.x+(this.owner.direction==='left'?-22:22),y:this.owner.point.y-39};
   if(this.tool==='brush'){const stroke=this.ownerTask?.kind==='brush'?Math.sin(this.time.now/130)*7:0;g.fillStyle(0x846e4a);g.fillRect(hand.x,hand.y+stroke,4,20);g.fillStyle(0xb6b58e);g.fillRect(hand.x-6,hand.y-8+stroke,17,14);g.fillStyle(0x77835f);for(let i=0;i<4;i++)g.fillRect(hand.x-5+i*4,hand.y-9+stroke,2,5);}
   if(this.tool==='wand'){
    const toy=this.toyUntil>this.time.now?this.toy:{x:hand.x+35,y:hand.y+28};g.lineStyle(3,0x927149);g.lineBetween(hand.x,hand.y,hand.x+23,hand.y-26);g.lineStyle(1.5,0xb7a180);g.lineBetween(hand.x+23,hand.y-26,toy.x,toy.y);
-   g.fillStyle(this.state.equipped.toy==='ribbon'?0xc18c85:0xa5ae82);g.fillRect(toy.x-4,toy.y-6,9,14);g.fillStyle(0xe5c99b);g.fillRect(toy.x-1,toy.y+6,3,7);
+   if(this.state.equipped.toy==='mouse'){g.fillStyle(0xaaa18f);g.fillRect(toy.x-10,toy.y-6,20,12);g.fillStyle(0xc8afa1);g.fillRect(toy.x-5,toy.y-10,5,5);g.fillStyle(0x494a40);g.fillRect(toy.x+6,toy.y-4,2,2);}else{g.fillStyle(this.state.equipped.toy==='ribbon'?0xc18c85:0xa5ae82);g.fillRect(toy.x-4,toy.y-6,9,14);g.fillStyle(0xe5c99b);g.fillRect(toy.x-1,toy.y+6,3,7);}
    if(this.pounces)for(let i=0;i<3;i++){g.fillStyle(i<this.pounces?0xe8bd88:0xece4c7);g.fillCircle(this.cat.point.x-10+i*10,this.cat.point.y-65,3);}
   }
   if(this.ownerTask?.kind==='food'||this.ownerTask?.kind==='water'){

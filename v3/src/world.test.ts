@@ -22,3 +22,8 @@ it('shares a smooth game clock between display, clock hands, day reset and save'
  const s=newCat();expect(clockText(s.minutes)).toBe('8:00 AM');expect(clockHands(s.minutes)).toEqual({minute:0,hour:240});expect(clockHands(advanceClock(480,5))).toEqual({minute:30,hour:242.5});expect(advanceClock(1320,999)).toBe(1320);expect(tomorrow({...s,minutes:1200}).minutes).toBe(480);
  s.owner={name:'Ari',hair:2,skin:3,outfit:1};s.minutes=732.25;expect(readSave(JSON.stringify(s))).toEqual(s);expect(()=>readSave(JSON.stringify({...s,owner:{...s.owner,hair:9}}))).toThrow();
 });
+
+it('starts click routes from visible grid cells even beside furniture corners',()=>{
+ const layout=createLayout(true),nav=new Navigator(layout),goal=layout.fixtures.find(f=>f.id==='food')!.approach;
+ for(const start of [{x:626.4,y:400},{x:879,y:334},{x:403,y:535}]){expect(canStand(layout,start)).toBe(true);const path=nav.path(start,goal);expect(path.length).toBeGreaterThan(0);let from=start;for(const p of path){expect(nav.clear(from,p)).toBe(true);from=p;}}
+});

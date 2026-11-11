@@ -75,3 +75,32 @@ Atmosphere includes drifting clouds, birds, window rain, dust, cup steam, leaf m
 V2 source: `model.ts` (rules, shop, saves), `navigation.ts` (routes), `sprites.ts` (frame atlases), `scene.ts` (behavior and interaction), `apartment.ts` (layered room), `atmosphere.ts` (lighting and ambient animation), `audio.ts` (soundscape), `main.ts` (HTML controls/persistence), and `style.css`.
 
 `npm test` covers v1 and v2 rules/navigation. `npm run test:browser` covers both games, v2 frame changes and furniture hops, care at objects, temperament and recovery, autonomous eating, real audio output/mute persistence, mobile camera controls, shopping/treats/bedtime, save isolation/recovery, and repository-prefixed Pages paths. Local Chromium is required as described above.
+
+## V3 · Together at home
+
+V3 lives at `/v3/`, with a three-quarter, top-down apartment and a playable owner. Run `npm run dev:v3`. The site build preserves `/v1/` and `/v2/`; their source and browser saves are unchanged.
+
+Start by creating both residents: owner name, four hair presets, five skin tones, four outfits; cat name, six coats, and three personalities. Owner and cat have separately authored, directional pixel-animation atlases. Appearance is saved under `cozy-cat-apartment:v3` along with needs, game time, owner location, purchases, and preferences. V3 never reads or overwrites earlier versions' keys. Invalid saves have a backup option before replacement; unavailable browser storage allows session play with a warning.
+
+### Controls and companionship
+
+- **WASD / arrow keys:** move the owner. **Tap floor:** walk there with furniture-aware routing.
+- **Mobile thumbstick:** move; **E / Interact button:** interact nearby. Tap a room object to walk over and use it.
+- Tap a bowl: the owner approaches, kneels and refills it, then steps aside for the cat.
+- Pick up the brush at the tool crate, then tap the cat to approach and brush. Put it down to offer quiet company.
+- Pick up the feather wand. Drag a floor target within the owner's reach, pause for a pounce, and repeat three times. **E** offers a new toy position for keyboard play. The owner visibly holds the wand.
+- **C / Call cat:** invite the cat to come over. A calm cat follows, seeks attention, and rubs against your legs. A sulking cat keeps its distance and can ignore a call.
+- Tap the sofa or reading chair to sit. A calm cat approaches and hops onto the owner's lap. Move or press **E** to stand, giving the cat time to hop back down.
+- **Explore home:** a floor plan with walking destinations for the living room, kitchen, reading nook and bedroom. This routes the owner through actual doorways, without teleporting. The camera follows the owner; the cat can follow between rooms.
+- The bedroom bed starts the next day. Cat needs do not deteriorate while the game is closed. Game time advances one minute per active real second, with small activity advances, and gently stops at 10 PM until the player chooses bedtime. Both clock hands, the HUD and lighting use that same saved time.
+- The little shop retains decorations, toys and treats. The owner offers purchased treats from the jar on the coffee table. Optional need meters, reduced ambient motion and a save backup are in Household.
+
+### Geometry and visual fixes
+
+Furniture rectangles define the same collision map for keyboard movement, thumbstick movement and both residents' pathfinding. Movement is swept in small steps, so large inputs cannot tunnel through a couch or wall. Cat jumps onto designated surfaces and into laps are explicit elevated transitions from walkable approach points, not floor paths through furniture. Sitting leaves the owner's ground anchor outside the sofa; standing and dismounting return to valid floor positions.
+
+Plants derive their anchors from the supporting tabletop's height and footprint. They are grouped with the supporting fixture for depth sorting, instead of being placed inside the sofa. The bird, skyline and rain render in an exterior layer clipped to four window panes; frame rails render above them. The clock is redrawn from the actual game minutes every frame.
+
+The expanded apartment includes kitchen counters and dining space, a reading chair and bookcase, a bedroom and bedside plants, open passages, and resting/hiding spots. Original local Web Audio music, city ambience, purrs, meows and care sounds remain enabled after the first gesture, with a persistent mute button.
+
+V3 source is self-contained: `care.ts` (state, needs, economy, clock), `world.ts` (layout, collision, paths, window/surface geometry), `sprites.ts` (owner/cat atlases), `room.ts` (layered room and clock), `scene.ts` (owner control, care, cat behavior), `main.ts` (creation, controls, saves and dialogs), `audio.ts`, and `style.css`.

@@ -35,7 +35,7 @@ export function createLayout(expanded:boolean):Layout{
  }
  return {width:expanded?1920:1024,height:expanded?1344:896,bounds:{x:64,y:144,w:expanded?1792:896,h:expanded?1136:672},fixtures,rooms,expanded};
 }
-export const LAYOUT=createLayout(false);
+export const LAYOUT=createLayout(true);
 export const distance=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);
 export const contains=(r:Rect,p:Point)=>p.x>=r.x&&p.x<=r.x+r.w&&p.y>=r.y&&p.y<=r.y+r.h;
 export function canStand(layout:Layout,p:Point,radius=OWNER_RADIUS){
@@ -55,7 +55,8 @@ export class Navigator{
  private key(p:Point){return `${p.x},${p.y}`;}
  nearest(p:Point){return this.cells.reduce((a,b)=>distance(a,p)<distance(b,p)?a:b);}
  path(from:Point,to:Point):Point[]{
-  const start=this.nearest(from),goal=this.nearest(to),startKey=this.key(start),goalKey=this.key(goal);
+  const visible=this.cells.filter(p=>distance(p,from)<96&&this.clear(from,p));
+  const start=visible.length?visible.reduce((a,b)=>distance(a,from)<distance(b,from)?a:b):this.nearest(from),goal=this.nearest(to),startKey=this.key(start),goalKey=this.key(goal);
   const open=new Set([startKey]),scores=new Map([[startKey,0]]),previous=new Map<string,string>();
   while(open.size){let current=[...open].reduce((a,b)=>(scores.get(a)!+distance(this.index.get(a)!,goal))<(scores.get(b)!+distance(this.index.get(b)!,goal))?a:b);
    if(current===goalKey){const result:Point[]=[];while(current!==startKey){result.unshift(this.index.get(current)!);current=previous.get(current)!;}result.unshift(start);if(canStand(this.layout,to,this.radius)&&this.clear(result.at(-1)!,to))result.push(to);return result;}
@@ -71,3 +72,7 @@ export function roomAt(layout:Layout,p:Point){return layout.rooms.find(r=>contai
 export const WINDOW={x:336,y:40,w:288,h:88};
 export const PANES=[{x:344,y:48,w:128,h:30},{x:484,y:48,w:132,h:30},{x:344,y:88,w:128,h:30},{x:484,y:88,w:132,h:30}];
 export function plantAnchor(f:Fixture):Point{return {x:f.rect.x+f.rect.w/2,y:f.rect.y+f.rect.h/2-f.height};}
+
+export const ROOM_DESTINATIONS:Record<string,Point>={
+ 'Living room':{x:368,y:624},Kitchen:{x:1232,y:432},'Reading nook':{x:496,y:1136},Bedroom:{x:1328,y:1056},
+};

@@ -31,6 +31,8 @@ test('built site works below a GitHub Pages repository prefix',async({page})=>{
     });expect(colors).toBeGreaterThan(30);
     await page.goto(`http://127.0.0.1:${port}/cozy-cat-apartment/v2/`);
     await page.getByRole('button',{name:'Come on in'}).click();await expect(page.locator('#stage')).toHaveAttribute('data-ready','true');
+    await page.goto(`http://127.0.0.1:${port}/cozy-cat-apartment/v3/`);
+    await page.getByRole('button',{name:'Open the door',exact:false}).click();await expect(page.locator('#stage')).toHaveAttribute('data-ready','true');
     expect(errors).toEqual([]);expect(requests).toEqual([]);
     await page.setViewportSize({width:320,height:568});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   }finally{await new Promise<void>((done,reject)=>server.close(err=>err?reject(err):done()));}
