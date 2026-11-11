@@ -53,3 +53,35 @@ test('sound starts on a gesture, produces audio, mutes, and persists',async({pag
  await page.getByRole('button',{name:'Mute sound',exact:true}).click();await expect(page.locator('#mute')).toHaveAttribute('data-audio-state','muted');expect(await rms()).toBeLessThan(.0001);
  await page.reload();await expect(page.getByRole('button',{name:'Enable sound',exact:true})).toHaveAttribute('aria-pressed','true');
 });
+
+test('mobile exploration, furnishings, pantry treats, weather, bedtime, and save isolation',async({page})=>{
+ test.setTimeout(45000);await page.setViewportSize({width:390,height:844});const cat=newCat('Pip',5,'Playful');cat.hearts=50;
+ await page.addInitScript(save=>{localStorage.setItem('cozy-cat-apartment:v2',JSON.stringify(save));localStorage.setItem('cozy-cat-apartment:v1','keep this earlier chapter');},cat);
+ await page.goto('/v2/');const stage=page.locator('#stage');await expect(stage).toHaveAttribute('data-ready','true');
+ await page.getByRole('button',{name:'Look toward bowls and tools',exact:true}).click();await expect(page.getByRole('button',{name:'Refill food bowl',exact:true})).toBeInViewport();
+ await page.getByRole('button',{name:'A little rain',exact:false}).click();await expect(page.locator('#weather')).toHaveAttribute('aria-pressed','true');
+ await page.getByRole('button',{name:'Open little shop',exact:true}).click();await page.locator('[data-buy="rose"]').click();await expect(page.locator('[data-buy="rose"]')).toHaveText('In your room');
+ await page.getByRole('button',{name:'Little treats',exact:true}).click();await page.locator('[data-buy="salmon"]').click();await expect(page.locator('#shop-dialog')).toContainText('1 in the treat jar');await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+ if(await page.getByRole('button',{name:'Look toward bowls and tools',exact:true}).isVisible())await page.getByRole('button',{name:'Look toward bowls and tools',exact:true}).click();await page.getByRole('button',{name:'Offer a treat',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cozy-cat-apartment:v2')!).treats.salmon),{timeout:13000}).toBe(0);
+ await page.getByRole('button',{name:'Your companion',exact:false}).click();await page.getByLabel('Reduced motion').check();await page.getByRole('button',{name:'Close dialog',exact:true}).click();
+ await page.screenshot({path:'test-results/v2-mobile-rain.png',fullPage:true});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+ await page.getByRole('button',{name:'Settle in for the night',exact:false}).click();await page.getByRole('button',{name:'Goodnight, Pip',exact:true}).click();
+ await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cozy-cat-apartment:v2')!).day),{timeout:17000}).toBe(2);
+ const saved=await page.evaluate(()=>JSON.parse(localStorage.getItem('cozy-cat-apartment:v2')!));expect(saved.equipped.cushion).toBe('rose');expect(saved.rain).toBe(true);expect(saved.reducedMotion).toBe(true);expect(await page.evaluate(()=>localStorage.getItem('cozy-cat-apartment:v1'))).toBe('keep this earlier chapter');
+});
+
+test('dragging the wand in the room produces a pounce without a separate play panel',async({page})=>{
+ await page.goto('/v2/');await page.getByRole('button',{name:'Come on in'}).click();await page.getByRole('button',{name:'Pick up feather wand',exact:true}).click();await expect(page.locator('#stage')).toHaveAttribute('data-tool','wand');
+ const toy=page.locator('#toy-target'),bounds=(await toy.boundingBox())!;await page.mouse.move(bounds.x+24,bounds.y+24);await page.mouse.down();await page.mouse.move(bounds.x+65,bounds.y+6,{steps:12});await page.mouse.up();
+ await expect(page.locator('#stage')).toHaveAttribute('data-pounces','1',{timeout:10000});await expect(page.locator('#play-dialog')).toHaveCount(0);
+});
+
+
+test('v2 preserves unreadable saves and reports blocked storage without losing session play',async({page})=>{
+ await page.addInitScript(()=>localStorage.setItem('cozy-cat-apartment:v2','original unreadable save'));
+ await page.goto('/v2/');await expect(page.getByRole('button',{name:'Download original save',exact:true})).toBeVisible();expect(await page.evaluate(()=>localStorage.getItem('cozy-cat-apartment:v2'))).toBe('original unreadable save');
+ await page.evaluate(()=>{Storage.prototype.setItem=()=>{throw new DOMException('Blocked','SecurityError');};});
+ await page.getByRole('button',{name:'Come on in'}).click();await expect(page.locator('#storage-warning')).toContainText('could not be saved');await expect(page.locator('#stage')).toHaveAttribute('data-ready','true');
+ await page.getByRole('button',{name:'Pick up brush',exact:true}).click();await expect(page.locator('#stage')).toHaveAttribute('data-tool','brush');
+});

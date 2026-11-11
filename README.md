@@ -49,3 +49,29 @@ V1 saves under `cozy-cat-apartment:v1` in `localStorage`. Each major version mus
 - Original procedural pixel-art apartment and SVG cat sprites; no external artwork, fonts, trackers, or runtime network requests.
 
 Source: `v1/src/game.ts` (pure rules and save validation), `room.ts` (Phaser scene and sprites), `main.ts` (accessible UI and persistence), `style.css` (responsive presentation).
+
+## V2 · A little life
+
+V2 is a separate, room-first game at `/v2/`. V1 remains available at `/v1/`, with its source and saves unchanged. Use `npm run dev:v2` to develop v2. The root build now builds both versions before assembling the Pages site.
+
+The cat has actual 8-frame sprite cycles for walking, sitting, sleeping, grooming, stretching, pouncing, hopping, eating, drinking, crouching, and hiding. Each coat has an atlas with soft, wary, and flattened-ear expressions. Frames are rasterized locally from original pixel poses, including individual legs, head, spine, tail, and eyes; there are no external images. Navigation uses a connected, tested room graph with designated furniture jumps and depth-sorted foreground occlusion.
+
+### Spend time in the room
+
+- Tap the food or water bowl. The cat approaches and eats or drinks at the bowl.
+- Pick up the brush hanging beside the bookshelf. Drag gently across the cat, or tap the cat four times. Put the tool down to offer quiet company.
+- Pick up the feather on the rug. Drag it slowly across the open play area, then pause for a pounce. Three pounces complete a play session. Keyboard users can focus the toy and press Space or Enter to move it.
+- Tap the window cushion to invite a nap. “Settle in for the night” lets the cat get comfortable before the next morning.
+- Watch posture, ears, and tail. A tired cat rests; an overwhelmed cat declines attention and shelters under the sofa. Put tools down and give space to let it recover. A hungry or thirsty cat seeks a stocked bowl independently.
+- On mobile, swipe to explore, use the edge hints to find bowls/tools or the sofa, and use the target icon to find your cat. A focused room accepts left/right arrow keys for camera movement. All interactions also have positioned, labeled HTML buttons.
+- The secondary little shop has six decorations, two toys, and two treats. Treat purchases go into the jar on the bookshelf; tap that jar to offer one. Owned decorations and toys can be reselected without another charge.
+
+V2 uses `cozy-cat-apartment:v2`. It never reads, changes, or imports v1 progress. Needs change through activities, not offline elapsed time. The companion drawer exposes optional meters, reduced motion, and a downloadable backup. Invalid saves are preserved until the player chooses a new cat, with a backup download available. Blocked/full storage produces a warning while allowing session play.
+
+Sound defaults on after the first pointer or keyboard gesture, respecting browser autoplay rules. The persistent mute button silences the master bus. The original Web Audio soundscape combines a quiet composed score, filtered city/traffic ambience, optional rain, synthesized purrs and meows, footsteps, drinking, and care sounds. No recordings, network services, or licensed sample downloads are required. Audio suspends in hidden tabs. Reduced motion freezes ambient animation while retaining essential, readable cat movement.
+
+Atmosphere includes drifting clouds, birds, window rain, dust, cup steam, leaf movement, evening windows, and gradual warm lamp lighting. Sunshine/rain is player-selectable. Graphics and sound remain local to the static site.
+
+V2 source: `model.ts` (rules, shop, saves), `navigation.ts` (routes), `sprites.ts` (frame atlases), `scene.ts` (behavior and interaction), `apartment.ts` (layered room), `atmosphere.ts` (lighting and ambient animation), `audio.ts` (soundscape), `main.ts` (HTML controls/persistence), and `style.css`.
+
+`npm test` covers v1 and v2 rules/navigation. `npm run test:browser` covers both games, v2 frame changes and furniture hops, care at objects, temperament and recovery, autonomous eating, real audio output/mute persistence, mobile camera controls, shopping/treats/bedtime, save isolation/recovery, and repository-prefixed Pages paths. Local Chromium is required as described above.

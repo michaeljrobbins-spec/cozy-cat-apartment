@@ -50,6 +50,7 @@ export class Soundscape{
   if(kind==='pounce'){this.tone(110,now,.1,.035,'triangle');this.tone(180,now+.035,.12,.012);return;}
   if(kind==='refill'||kind==='drink'){[0,.12,.27].forEach((t,i)=>{this.tone(650+i*170,now+t,.13,.016);});return;}
   if(kind==='eat'){for(let i=0;i<7;i++)this.tone(120+Math.random()*150,now+i*.28,.06,.012,'triangle');return;}
+  if(kind==='morning'){this.tone(392,now,1.5,.025);this.tone(523.25,now+.25,1.5,.018);this.tone(659.25,now+.5,1.8,.012);return;}
   if(kind==='complete'){this.tone(523.25,now,.65,.022);this.tone(659.25,now+.12,.75,.017);this.purr();return;}
   if(kind==='tool')this.tone(330,now,.1,.012,'triangle');
  }

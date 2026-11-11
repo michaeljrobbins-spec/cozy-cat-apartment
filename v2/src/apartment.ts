@@ -22,7 +22,7 @@ export function drawApartment(scene:Phaser.Scene,state:Save,previous?:DecorLayer
  // Window recess, hand-pixelled skyline, buildings with roof gardens.
  r(405,44,413,340,0xab8f6a);r(414,50,395,320,0xede0bd);r(425,60,373,299,evening?0x999da9:state.rain?0xa5b8b9:0xb3ceca);
  circle(740,107,24,evening?0xefc8a7:0xf6e5b5);
- const cloud=(x:number,y:number)=>{r(x,y,58,9,0xe9e8d2,.8);r(x+12,y-7,32,9,0xe9e8d2,.8);};cloud(460,110);cloud(655,150);
+ const cloud=(x:number,y:number)=>{r(x,y,58,9,0xe9e8d2,.8);r(x+12,y-7,32,9,0xe9e8d2,.8);};
  [[428,230,48,130],[481,193,58,167],[544,251,45,109],[595,211,64,149],[665,237,49,123],[722,177,70,183]].forEach(([x,y,w,h],i)=>{
   r(x,y,w,h,i%2?0x819f9b:0x93afaa);r(x+6,y-7,w-12,7,0x7e9992);r(x+16,y-13,4,8,0x6d8c7b);
   for(let xx=x+9;xx<x+w-5;xx+=14)for(let yy=y+17;yy<350;yy+=22)r(xx,yy,6,9,evening&&((xx+yy)%3)?0xf3d1a1:0xb6c9ba);
@@ -37,7 +37,7 @@ export function drawApartment(scene:Phaser.Scene,state:Save,previous?:DecorLayer
  for(const y of [232,318,406,492]){r(75,y,190,10,0x6d563e);r(81,y,176,4,0xc2a179);r(84,y+9,166,7,0x6d563e,.3);}
  const bookColors=[0x8e9d7c,0xbb8567,0xd1b47e,0x6f8984,0x9d8882];
  for(let i=0;i<9;i++){const x=91+i*17,h=42+(i%3)*8;r(x,231-h,13,h,bookColors[i%5]);r(x+3,236-h,7,3,0xe5d2ad);r(x+3,220,7,2,0xe5d2ad);}
- r(94,289,70,18,0xbe9b73);r(99,274,61,14,0x8e9e86);r(98,270,66,4,0xe6d9b7);r(187,258,45,51,0xe7d4ae);r(192,263,35,37,0x9baf9d);p([[195,294],[207,277],[224,294]],0xd3be8e);
+ r(94,289,70,18,0xbe9b73);r(99,274,61,14,0x8e9e86);r(98,270,66,4,0xe6d9b7);r(187,265,45,44,0xc5ab85);r(184,258,51,8,0x8e9f78);r(192,278,35,20,0xe7d4ae);r(203,282,7,11,0xc19968);r(200,285,13,5,0xc19968);
  r(96,350,59,53,0xb7b5a0);r(102,356,47,4,0xe0d8b9);r(111,369,29,3,0x8f9683);r(180,376,58,25,0xc1a27c);for(let x=185;x<233;x+=7)r(x,379,2,18,0xa48963);
  r(98,443,139,44,0xc2a47b);for(let x=104;x<234;x+=10)r(x,448,3,33,0xaa8a60);r(146,449,35,6,0x947650);r(85,508,9,19,0x70583f);r(246,508,9,19,0x70583f);
  // Wall art, clock and small shelf.
