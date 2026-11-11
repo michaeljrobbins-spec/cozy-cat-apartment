@@ -1,4 +1,4 @@
-LITTLE WINDOWS V4 — AUDIO AND ART CREDITS
+LITTLE WINDOWS V5 — AUDIO AND ART CREDITS
 
 Downloaded cat recordings
 -------------------------
@@ -24,7 +24,7 @@ Locally generated with Web Audio; no external sample recordings.
 
 Original pixel art and animation
 -------------------------------
-Sources: src/sprites.ts and src/room.ts. No third-party artwork or fonts.
+Sources: src/sprites.ts, src/room.ts, src/scene.ts and src/inventory.ts. No third-party artwork or fonts.
 
 Runtime library
 ---------------

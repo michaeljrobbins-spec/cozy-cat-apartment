@@ -98,10 +98,11 @@ export class ApartmentArt{
  }
  update(time:number,delta:number,state:Save){
   if(this.lastStyle!==JSON.stringify(state.equipped))this.build(state);
-  const t=state.reducedMotion?0:time,g=this.exterior;g.clear();g.fillStyle(state.rain?0xa5b8b6:state.minutes>=1050?0xb49eaa:0xb1cfca);g.fillRect(WINDOW.x,WINDOW.y,WINDOW.w,WINDOW.h);
+  const t=state.reducedMotion?0:time,g=this.exterior;g.clear();g.fillStyle((state.rain||state.adventure.active?.kind==='storm')?0xa5b8b6:state.minutes>=1050?0xb49eaa:0xb1cfca);g.fillRect(WINDOW.x,WINDOW.y,WINDOW.w,WINDOW.h);
   for(let i=0;i<9;i++){const x=WINDOW.x+4+i*30,y=92+(i%3)*8;g.fillStyle(i%2?0x819e99:0x95b0a4);g.fillRect(x,y,29,45);g.fillStyle(0xd7d8b8);g.fillRect(x+6,y+8,4,5);g.fillRect(x+18,y+8,4,5);}
   const birdX=WINDOW.x-20+(t/38)%(WINDOW.w+40),birdY=60+Math.sin(t/850)*9;g.fillStyle(0x5f7d76);g.fillRect(Math.round(birdX),Math.round(birdY),4,2);g.fillRect(Math.round(birdX)-4,Math.round(birdY)+(Math.floor(t/180)%2?-2:2),4,2);g.fillRect(Math.round(birdX)+4,Math.round(birdY)+(Math.floor(t/180)%2?-2:2),4,2);
-  if(state.rain){g.lineStyle(1,0xe2e9dc,.45);for(let i=0;i<35;i++){const x=WINDOW.x+4+i*19%(WINDOW.w-8),y=44+(i*13+t/28)%80;g.lineBetween(x,y,x-2,y+7);}}
+  if(state.adventure.active?.kind==='bird'){const x=244,y=109;g.fillStyle(0x6d8279);g.fillRect(x-8,y-7,16,9);g.fillRect(x+3,y-12,8,8);g.fillStyle(0xe6c18a);g.fillRect(x+11,y-9,4,3);g.fillStyle(0xe4d7b8);g.fillRect(x-5,y-3,9,4);g.fillStyle(0x455e54);g.fillRect(x+8,y-11,2,2);g.fillRect(x-11,y-3,5,3);g.fillRect(x-4,y+2,2,4);g.fillRect(x+2,y+2,2,4);}
+  if(state.rain||state.adventure.active?.kind==='storm'){g.lineStyle(1,0xe2e9dc,.45);for(let i=0;i<35;i++){const x=WINDOW.x+4+i*19%(WINDOW.w-8),y=44+(i*13+t/28)%80;g.lineBetween(x,y,x-2,y+7);}}
   this.drawClock(state.minutes);
   const light=this.light;light.clear();const target=state.minutes>990?Math.min(.24,(state.minutes-990)/1500):0;this.warmth=Phaser.Math.Linear(this.warmth,target,Math.min(1,delta/1500));light.fillStyle(0x655971,this.warmth);light.fillRect(0,0,this.layout.width,this.layout.height);
   if(state.minutes>1000){for(let i=5;i>0;i--){light.fillStyle(0xffd49b,.015*i);light.fillCircle(864,300,22+i*14);}}
