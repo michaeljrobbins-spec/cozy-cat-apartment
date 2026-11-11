@@ -3,7 +3,7 @@ export const SPOTS:Record<string,Point>={
  center:{x:635,y:632},left:{x:405,y:620},bowls:{x:235,y:657},water:{x:325,y:657},
  frontLeft:{x:440,y:744},front:{x:680,y:744},right:{x:1100,y:700},frontRight:{x:950,y:744},
  sofa:{x:1050,y:660},sofaSeat:{x:1030,y:487},behind:{x:1060,y:520},hall:{x:845,y:538},
- windowFloor:{x:625,y:535},window:{x:620,y:416},sun:{x:515,y:587},hide:{x:1035,y:605},plant:{x:310,y:560},
+ windowFloor:{x:625,y:535},window:{x:620,y:416},sun:{x:515,y:587},hide:{x:1040,y:663},plant:{x:310,y:560},
 };
 const EDGES=[['center','left'],['left','bowls'],['bowls','water'],['water','left'],['left','frontLeft'],['frontLeft','front'],['front','frontRight'],['frontRight','right'],['right','sofa'],['sofa','hide'],['sofa','sofaSeat'],['center','windowFloor'],['center','sun'],['sun','left'],['sun','windowFloor'],['left','plant'],['windowFloor','window'],['windowFloor','hall'],['hall','behind'],['hall','sofa'],['behind','sofaSeat'],['center','front']];
 export const distance=(a:Point,b:Point)=>Math.hypot(a.x-b.x,a.y-b.y);

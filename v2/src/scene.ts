@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import {newCat,complete,accepts,phase,type Save,type Pose,type Activity} from './model';
+import {newCat,complete,accepts,phase,mood,clamp,type Save,type Pose,type Activity} from './model';
 import {installSprites,type Expression} from './sprites';
 import {drawApartment,WORLD,type DecorLayers} from './apartment';
 import {SPOTS,route,distance,isHop,type Point} from './navigation';
-export interface RoomSnapshot{x:number;y:number;pose:Pose;node:string;destination:string;frame:string;expression:Expression;zoom:number;scrollX:number;scrollY:number;width:number;height:number;tool:Tool;brush:number;pounces:number;toy:Point}
+export interface RoomSnapshot{x:number;y:number;pose:Pose;node:string;destination:string;frame:string;expression:Expression;zoom:number;scrollX:number;scrollY:number;width:number;height:number;tool:Tool;brush:number;pounces:number;mood:string;toy:Point}
 export type Tool='hands'|'brush'|'wand';
 export type ObjectName='food'|'water'|'brush'|'wand'|'window'|'cat';
 export interface RoomHooks{snapshot:(s:RoomSnapshot)=>void;ready:()=>void;change:(s:Save)=>void;feedback?:(kind:string)=>void}
@@ -16,6 +16,7 @@ export class LivingRoom extends Phaser.Scene{
  private legs:string[]=[];private leg?:Leg;private rest=2200;private physical={...SPOTS.center};private lastSnapshot=0;
  private focus=true;private manualUntil=0;private chooseCount=0;private arrivalPose:Pose='sit';private arrivalRest=6000;private arrived?:()=>void;private queued?:()=>void;
  private task?:Task;private tool:Tool='hands';private brushCount=0;private lastBrush=-1000;private pounces=0;private toy={x:490,y:685};private toyActive=0;private toyReady=0;
+ private calmTime=0;private lastRefusal=-3000;private sniffTime=0;
  private leap?:{from:Point;to:Point;elapsed:number};private sparkles:{x:number;y:number;life:number;color:number}[]=[];
  constructor(hooks:RoomHooks){super('living-room');this.hooks=hooks;}
  create(){
@@ -24,9 +25,9 @@ export class LivingRoom extends Phaser.Scene{
   this.cat=this.add.sprite(this.physical.x,this.physical.y,`cat-${this.state.coat}`,'soft-stretch-0').setOrigin(.5,.9).setScale(2.3);
   this.effects=this.add.graphics().setDepth(2100);this.wand=this.add.graphics().setDepth(2050);
   this.cat.play(`cat-${this.state.coat}-soft-stretch`);this.resize();
-  this.scale.on('resize',()=>this.resize());this.hooks.ready();
+  this.scale.on('resize',()=>this.resize());this.bodyLanguage();this.hooks.ready();
  }
- sync(state:Save){const changed=this.state.coat!==state.coat,lighting=phase(state)!==phase(this.state);this.state=state;if(!this.cat)return;if(changed)this.animate(this.pose,true);if(lighting)this.redraw();}
+ sync(state:Save){const changed=this.state.coat!==state.coat,lighting=phase(state)!==phase(this.state);this.state=state;if(!this.cat)return;if(changed)this.animate(this.pose,true);if(lighting)this.redraw();this.bodyLanguage();}
  private resize(){
   const c=this.cameras.main;const portrait=this.scale.width/this.scale.height<1.15;
   c.setZoom(portrait?this.scale.height/WORLD.height:Math.min(this.scale.width/WORLD.width,this.scale.height/WORLD.height));c.setBounds(0,0,WORLD.width,WORLD.height);c.centerOn(this.physical.x,400);
@@ -44,6 +45,12 @@ export class LivingRoom extends Phaser.Scene{
  private request(run:()=>void){if(this.task||this.leap)return;if(this.leg)this.queued=run;else run();}
  private think(){
   this.chooseCount++;
+  const feeling=mood(this.state);
+  if(feeling==='overwhelmed'||feeling==='wary'){this.travel('hide','hide',7000);return;}
+  if(feeling==='sleepy'){this.travel('sun','sleep',14000,()=>this.begin('sleep',5000,false));return;}
+  if(feeling==='thirsty'){this.travel('water',this.state.water?'drink':'sit',6500,()=>{if(this.state.water){this.cat.setFlipX(true);this.begin('drink',3300,false);}else this.hooks.feedback?.('meow');});return;}
+  if(feeling==='hungry'){this.travel('bowls',this.state.food?'eat':'sit',6500,()=>{if(this.state.food){this.cat.setFlipX(true);this.begin('eat',3300,false);}else this.hooks.feedback?.('meow');});return;}
+  if(this.node==='hide'){this.travel('sun','stretch',4000);return;}
   if(this.chooseCount===1){this.travel('sun','stretch',4200);return;}
   if(this.chooseCount===2){this.travel('window','sit',9000);return;}
   const choices:[string,Pose,number][]=[['sun','sleep',11000],['window','sit',10000],['sofaSeat','groom',6500],['left','stretch',3500],['plant','sit',5000],['behind','sit',1500],['center','groom',5500]];
@@ -63,14 +70,14 @@ export class LivingRoom extends Phaser.Scene{
  setTool(tool:Tool){this.tool=tool;this.brushCount=0;if(tool==='hands'){this.toyActive=0;this.pounces=0;}this.hooks.feedback?.('tool');}
  stroke(){
   if(this.tool!=='brush'||this.leg||this.leap||this.task||this.time.now-this.lastBrush<190)return;
-  this.lastBrush=this.time.now;if(!accepts(this.state,'brush'))return;
+  this.lastBrush=this.time.now;if(!accepts(this.state,'brush')){this.refuse('brush');return;}
   this.brushCount++;this.animate('groom');this.rest=2500;this.burst(this.physical.x,this.physical.y-70,0xe9d7aa);this.hooks.feedback?.('brush');
   if(this.brushCount>=4){this.brushCount=0;this.begin('brush',1800);}
  }
  brushAt(x:number,y:number){if(distance({x,y},{x:this.physical.x,y:this.physical.y-40})<95)this.stroke();}
  moveToy(x:number,y:number){
   if(this.tool!=='wand')return;this.toy={x:Phaser.Math.Clamp(x,410,700),y:Phaser.Math.Clamp(y,580,720)};this.toyActive=this.time.now+16000;this.toyReady=this.time.now+550;this.focusCat();
-  if(!accepts(this.state,'play'))return;
+  if(!accepts(this.state,'play')){this.refuse('play');return;}
   if(this.task||this.leap)return;
   if(distance(this.physical,this.toy)>170){const spot=['center','left','sun','frontLeft','front'].reduce((a,b)=>distance(SPOTS[a],this.toy)<distance(SPOTS[b],this.toy)?a:b);if(this.destination!==spot||!this.leg)this.request(()=>this.travel(spot,'crouch',8000));}
   else if(!this.leg)this.animate('crouch');
@@ -83,12 +90,27 @@ export class LivingRoom extends Phaser.Scene{
   const oldPhase=phase(this.state),result=complete(this.state,activity,player);this.state=result.state;this.hooks.change(this.state);
   if(result.earned)this.burst(this.physical.x,this.physical.y-70,0xdba390,9);
   if(activity==='eat'||activity==='drink'||oldPhase!==phase(this.state))this.redraw();
-  this.rest=activity==='sleep'?12000:3500;if(activity!=='sleep')this.animate(activity==='eat'||activity==='drink'?'groom':'sit');
+  this.bodyLanguage();this.rest=activity==='sleep'?12000:3500;if(activity!=='sleep')this.animate(activity==='eat'||activity==='drink'?'groom':'sit');
   this.hooks.feedback?.('complete');
+ }
+ private bodyLanguage(){
+  if(!this.cat)return;const feeling=mood(this.state);const expression:Expression=feeling==='overwhelmed'?'flat':feeling==='wary'||feeling==='hungry'||feeling==='thirsty'?'wary':'soft';
+  if(expression!==this.expression){this.expression=expression;this.animate(this.pose,true);}
+ }
+ private refuse(_activity:Activity){
+  if(this.time.now-this.lastRefusal<2200)return;this.lastRefusal=this.time.now;this.toyActive=0;
+  if(this.state.needs.energy>=28)this.state={...this.state,tension:clamp(this.state.tension+13)};
+  this.hooks.change(this.state);this.bodyLanguage();this.hooks.feedback?.('refuse');
+  const sleepy=this.state.needs.energy<28;this.request(()=>this.travel(sleepy?'sun':'hide',sleepy?'sleep':'hide',7000,sleepy?()=>this.begin('sleep',5000,false):undefined));
  }
  private burst(x:number,y:number,color:number,count=6){for(let i=0;i<count;i++)this.sparkles.push({x:x+(Math.random()-.5)*45,y:y+Math.random()*12,life:1,color});}
  update(_time:number,delta:number){
   if(!this.cat)return;const dt=Math.min(delta,60);
+  this.calmTime+=dt;this.sniffTime+=dt;
+  if(this.calmTime>=1000){this.calmTime=0;const quiet=this.tool==='hands'||(this.tool==='brush'&&this.time.now-this.lastBrush>3000)||this.toyActive<this.time.now;
+   if(quiet&&this.state.tension>0){this.state={...this.state,tension:clamp(this.state.tension-(this.pose==='sleep'?5:3))};this.hooks.change(this.state);this.bodyLanguage();}}
+  if(this.sniffTime>15000){this.sniffTime=0;if(mood(this.state)==='hungry'||mood(this.state)==='thirsty'||this.state.personality==='Demanding')this.hooks.feedback?.('meow');}
+
   if(this.leap){const jump=this.leap;jump.elapsed+=dt;const t=Math.min(1,jump.elapsed/650);this.physical.x=Phaser.Math.Linear(jump.from.x,jump.to.x,t);this.physical.y=Phaser.Math.Linear(jump.from.y,jump.to.y,t);this.cat.setPosition(this.physical.x,this.physical.y-Math.sin(t*Math.PI)*48);
    if(t===1){this.leap=undefined;this.pounces++;this.burst(this.physical.x,this.physical.y-10,0xe9d6a5);this.hooks.feedback?.('pounce');this.toyActive=0;this.animate('sit');if(this.pounces>=3){this.pounces=0;this.finish('play');}this.rest=4500;}
   }else if(this.leg){const leg=this.leg;leg.elapsed+=dt;const t=Math.min(1,leg.elapsed/Math.max(1,leg.duration));const eased=leg.hop?Phaser.Math.Easing.Sine.InOut(t):t;
@@ -98,11 +120,11 @@ export class LivingRoom extends Phaser.Scene{
    if(distance(this.physical,this.toy)<185&&this.time.now>this.toyReady){this.animate('pounce');this.cat.setFlipX(this.toy.x<this.physical.x);this.leap={from:{...this.physical},to:{...this.toy},elapsed:0};}
    else if(distance(this.physical,this.toy)>=185)this.moveToy(this.toy.x,this.toy.y);
   }else{this.rest-=dt;if(this.rest<=0)this.think();}
-  this.cat.setDepth(this.physical.y);this.shadow.setPosition(this.physical.x,this.physical.y+2).setDepth(this.physical.y-1).setAlpha(this.leg?.hop||this.leap?.09:.16);
+  this.cat.setDepth(this.node==='hide'&&!this.leg?630:this.physical.y);this.shadow.setPosition(this.physical.x,this.physical.y+2).setDepth(this.physical.y-1).setAlpha(this.leg?.hop||this.leap?.09:.16);
   if(this.art&&!this.state.reducedMotion)this.art.leaves.list.forEach((leaf,i)=>{(leaf as Phaser.GameObjects.Container).angle=Math.sin(this.time.now/2200+i)*.7;});
   this.drawEffects(dt);
   const c=this.cameras.main;if(this.focus&&this.time.now>this.manualUntil){const target=this.physical.x-this.scale.width/2;c.scrollX=this.state.reducedMotion?target:Phaser.Math.Linear(c.scrollX,target,.025);}
-  if(this.time.now-this.lastSnapshot>80){this.lastSnapshot=this.time.now;this.hooks.snapshot({x:this.physical.x,y:this.physical.y,pose:this.pose,node:this.node,destination:this.destination,frame:String(this.cat.frame.name),expression:this.expression,zoom:c.zoom,scrollX:c.worldView.x,scrollY:c.worldView.y,width:this.scale.width,height:this.scale.height,tool:this.tool,brush:this.brushCount,pounces:this.pounces,toy:this.toy});}
+  if(this.time.now-this.lastSnapshot>80){this.lastSnapshot=this.time.now;this.hooks.snapshot({x:this.physical.x,y:this.physical.y,pose:this.pose,node:this.node,destination:this.destination,frame:String(this.cat.frame.name),expression:this.expression,zoom:c.zoom,scrollX:c.worldView.x,scrollY:c.worldView.y,width:this.scale.width,height:this.scale.height,tool:this.tool,brush:this.brushCount,pounces:this.pounces,mood:mood(this.state),toy:this.toy});}
  }
  private drawEffects(dt:number){
   const g=this.effects;g.clear();this.sparkles=this.sparkles.filter(p=>p.life>0);for(const p of this.sparkles){p.life-=dt/1100;if(!this.state.reducedMotion)p.y-=dt/40;g.fillStyle(p.color,p.life);g.fillRect(p.x,p.y,4,4);g.fillRect(p.x+1,p.y-2,2,8);}

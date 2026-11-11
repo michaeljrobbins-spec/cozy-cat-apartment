@@ -26,7 +26,7 @@ function positionObjects(s:RoomSnapshot){
 const room=startRoom($('#canvas-room'),state,{
  ready:()=>{$('#stage').dataset.ready='true';},
  change:s=>{state=s;persist();refresh();},
- snapshot:s=>{snapshot=s;const stage=$('#stage');stage.dataset.pose=s.pose;stage.dataset.node=s.node;stage.dataset.destination=s.destination;stage.dataset.frame=s.frame;stage.dataset.x=String(Math.round(s.x));stage.dataset.y=String(Math.round(s.y));stage.dataset.expression=s.expression;stage.dataset.tool=s.tool;stage.dataset.pounces=String(s.pounces);stage.dataset.brush=String(s.brush);positionObjects(s);},
+ snapshot:s=>{snapshot=s;const stage=$('#stage');stage.dataset.pose=s.pose;stage.dataset.node=s.node;stage.dataset.destination=s.destination;stage.dataset.frame=s.frame;stage.dataset.x=String(Math.round(s.x));stage.dataset.y=String(Math.round(s.y));stage.dataset.expression=s.expression;stage.dataset.mood=s.mood;stage.dataset.tool=s.tool;stage.dataset.pounces=String(s.pounces);stage.dataset.brush=String(s.brush);positionObjects(s);},
 });
 $('#focus-cat').onclick=()=>room.scene.focusCat();
 $('#stage').addEventListener('keydown',e=>{if(e.target!==$('#stage'))return;if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();room.scene.pan(e.key==='ArrowLeft'?90:-90);}});

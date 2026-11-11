@@ -26,15 +26,15 @@ function drawPose(c:CanvasRenderingContext2D,coat:number,pose:Pose,f:number,expr
  const tail=(points:number[][])=>{c.lineJoin='miter';c.lineCap='square';c.strokeStyle=outline;c.lineWidth=5;c.beginPath();points.forEach(([x,y],i)=>i?c.lineTo(Math.round(x),Math.round(y)):c.moveTo(Math.round(x),Math.round(y)));c.stroke();c.strokeStyle=fur;c.lineWidth=3;c.stroke();const [x,y]=points[points.length-1];r(x-1,y-1,3,3,stripe);};
  const head=(x:number,y:number,eyes:'open'|'closed'|'wide'='open',down=false)=>{
    const flat=expression==='flat',wary=expression==='wary';
-   poly(flat?[[x-3,y+3],[x+2,y+1],[x+5,y+4],[x+13,y+4],[x+18,y+1],[x+21,y+3],[x+17,y+10],[x+1,y+10]]:[[x,y+6],[x,y-2],[x+3,y-2],[x+7,y+3],[x+12,y+3],[x+16,y-2],[x+19,y-2],[x+19,y+16],[x+16,y+19],[x+2,y+19],[x-1,y+15]],outline);
-   poly([[x+1,y+6],[x+1,y+1],[x+6,y+5],[x+12,y+5],[x+17,y+1],[x+17,y+14],[x+14,y+17],[x+3,y+17],[x,y+13]],fur);
+   poly(flat?[[x-4,y+5],[x+2,y+3],[x+6,y+6],[x+12,y+6],[x+18,y+3],[x+23,y+5],[x+18,y+10],[x+18,y+16],[x+15,y+19],[x+2,y+19],[x-1,y+15],[x-1,y+10]]:[[x,y+6],[x,y-2],[x+3,y-2],[x+7,y+3],[x+12,y+3],[x+16,y-2],[x+19,y-2],[x+19,y+16],[x+16,y+19],[x+2,y+19],[x-1,y+15]],outline);
+   poly(flat?[[x-2,y+5],[x+3,y+6],[x+6,y+8],[x+13,y+8],[x+19,y+5],[x+18,y+9],[x+17,y+15],[x+14,y+17],[x+3,y+17],[x,y+13],[x,y+9]]:[[x+1,y+6],[x+1,y+1],[x+6,y+5],[x+12,y+5],[x+17,y+1],[x+17,y+14],[x+14,y+17],[x+3,y+17],[x,y+13]],fur);
    if(!flat){r(x+2,y+2,2,3,'#d6a092');r(x+14,y+2,2,3,'#d6a092');}else{r(x-1,y+4,4,2,'#d6a092');r(x+15,y+4,4,2,'#d6a092');}
    r(x+1,y+13,16,3,light);r(x+5,y+16,8,2,shine);
    if(coat<2){r(x+7,y+4,2,4,stripe);r(x+11,y+4,2,3,stripe);r(x,y+10,3,2,stripe);r(x+15,y+10,3,2,stripe);}
    if(coat===2){poly([[x+8,y+9],[x+11,y+13],[x+14,y+16],[x+4,y+16]],light);}
    if(coat===3){r(x+1,y+5,5,6,stripe);r(x+13,y+4,4,5,light);}
    if(eyes==='closed'||(f===7&&pose==='sit')){r(x+3,y+10,4,1,outline);r(x+12,y+10,4,1,outline);}
-   else{const h=eyes==='wide'?4:wary?2:3;r(x+4,y+9,3,h,'#b6c08a');r(x+13,y+9,3,h,'#b6c08a');r(x+5,y+9,1,h,outline);r(x+14,y+9,1,h,outline);if(!wary){r(x+4,y+9,1,1,shine);r(x+13,y+9,1,1,shine);}}
+   else{const h=eyes==='wide'?4:flat?1:wary?2:3;r(x+4,y+9,3,h,'#b6c08a');r(x+13,y+9,3,h,'#b6c08a');r(x+5,y+9,1,h,outline);r(x+14,y+9,1,h,outline);if(!wary){r(x+4,y+9,1,1,shine);r(x+13,y+9,1,1,shine);}}
    r(x+9,y+13,2,2,'#bc8179');if(!down)r(x+9,y+15,1,1,outline);
    r(x-3,y+13,5,1,'#e5dac4');r(x+16,y+13,6,1,'#e5dac4');
  };
@@ -93,7 +93,7 @@ export function installSprites(scene:Phaser.Scene){
  for(let coat=0;coat<6;coat++){
    const key=`cat-${coat}`,canvas=spriteSheet(coat),texture=scene.textures.addCanvas(key,canvas)!;
    for(let e=0;e<3;e++)for(let p=0;p<POSES.length;p++)for(let f=0;f<8;f++)texture.add(`${EXPRESSIONS[e]}-${POSES[p]}-${f}`,0,f*W,(e*POSES.length+p)*H,W,H);
-   for(const expression of EXPRESSIONS)for(const pose of POSES)scene.anims.create({key:`${key}-${expression}-${pose}`,frames:Array.from({length:8},(_,i)=>({key,frame:`${expression}-${pose}-${i}`})),frameRate:pose==='walk'?10:pose==='pounce'||pose==='hop'?14:pose==='sleep'?2:pose==='sit'?3:6,repeat:-1});
+   for(const expression of EXPRESSIONS)for(const pose of POSES)scene.anims.create({key:`${key}-${expression}-${pose}`,frames:Array.from({length:8},(_,i)=>({key,frame:`${expression}-${pose}-${i}`})),frameRate:expression==='flat'&&pose==='sit'?10:pose==='walk'?10:pose==='pounce'||pose==='hop'?14:pose==='sleep'?2:pose==='sit'?3:6,repeat:-1});
  }
 }
 export function portrait(coat:number):string{const sheet=spriteSheet(coat),canvas=document.createElement('canvas');canvas.width=64;canvas.height=48;canvas.getContext('2d')!.drawImage(sheet,0,48,64,48,0,0,64,48);return canvas.toDataURL();}
