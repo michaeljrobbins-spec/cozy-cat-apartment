@@ -1,13 +1,17 @@
 {
   "name": "cozy-cat-apartment",
   "private": true,
-  "workspaces": ["v1"],
+  "workspaces": [
+    "v1",
+    "v2"
+  ],
   "scripts": {
     "dev": "npm run dev --workspace=v1 -- --host 0.0.0.0",
-    "build": "npm run build --workspace=v1 && node scripts/build-site.mjs",
+    "build": "npm run build --workspace=v1 && npm run build --workspace=v2 && node scripts/build-site.mjs",
     "preview": "vite preview --outDir dist --host 0.0.0.0",
     "test": "vitest run",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "dev:v2": "npm run dev --workspace=v2 -- --host 0.0.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
