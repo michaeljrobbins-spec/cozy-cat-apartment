@@ -1,0 +1,5 @@
+import {test,expect} from '@playwright/test';
+import {newCat} from '../v6/src/care';
+test('v6 water care completes reliably and put-down is beside play',async({page})=>{
+ const s=newCat();s.ownerPosition={x:656,y:432};s.needs.water=20;s.water=0;s.journey.tutorial.status='skipped';await page.addInitScript(s=>localStorage.setItem('cozy-cat-apartment:v6',JSON.stringify(s)),s);await page.goto('/v6/');await expect(page.locator('#stage')).toHaveAttribute('data-ready','true');await page.getByRole('button',{name:'Refill water bowl',exact:true}).click();await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('cozy-cat-apartment:v6')!).needs.water),{timeout:14000}).toBeGreaterThan(55);await page.getByRole('button',{name:'Open inventory',exact:true}).click();await page.locator('[data-bag-use="ball"]').click();await expect(page.locator('#play-hud #put-down')).toBeVisible({timeout:8000});await page.locator('#put-down').click();await expect(page.locator('#stage')).toHaveAttribute('data-tool','hands');
+});
