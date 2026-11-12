@@ -1,0 +1,9 @@
+import {expect,it} from 'vitest';
+import {newCat,readSave} from './care';
+import {dayDirection,daySteps} from './progress';
+import {act,newMystery} from './mystery';
+it('names each window prerequisite, persists a carried cushion, and keeps completion visible',()=>{
+ let s=newCat();expect(dayDirection(s)).toMatchObject({target:'cabinet',item:'sage',done:0,total:4});s.held.tool='cushion';s=readSave(JSON.stringify(s));expect(dayDirection(s).target).toBe('window-seat');expect(daySteps(s)[0].done).toBe(true);s=act(s,'cushion',1).state;s.held.tool='hands';expect(dayDirection(s).target).toBe('curtain');s=act(s,'shade',.4).state;expect(dayDirection(s).label).toContain('Invite');s=act(s,'invite').state;s.needs.food=0;expect(dayDirection(s)).toMatchObject({target:'bed',done:4,total:4});
+});
+it('names the correct tools and gestures for both later requests',()=>{const s=newCat();s.mystery=newMystery(1,'rattle');expect(dayDirection(s).target).toBe('phone');s.owned.push('felt');expect(dayDirection(s).item).toBe('felt');s.held.tool='mat';expect(dayDirection(s).label).toContain('Place');s.mystery.mat=true;expect(dayDirection(s).label).toContain('gold mark');s.mystery=newMystery(1,'mouse');expect(dayDirection(s).target).toBe('bed-clue');s.mystery.clues=['bed'];s.held={tool:'wand',toy:'ball'};expect(dayDirection(s).item).toBe('wand');s.held.toy='wand';expect(dayDirection(s).label).toContain('gentle pulls');});
+it('makes reassurance the next step and migrates early v7 saves safely',()=>{const s=newCat();s.mystery.patience=0;expect(dayDirection(s).label).toContain('Reassure');s.held.tool='cushion';expect(dayDirection(s).label).toContain('Put your tool down');const old=JSON.parse(JSON.stringify(s));delete old.held;expect(readSave(JSON.stringify(old)).held).toEqual({tool:'hands',toy:'wand'});old.held={tool:'mat',toy:'wand'};expect(()=>readSave(JSON.stringify(old))).toThrow('Invalid carried item');});

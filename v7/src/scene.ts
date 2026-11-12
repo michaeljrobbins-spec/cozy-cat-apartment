@@ -7,11 +7,11 @@ import Phaser from 'phaser';
 import {event as journeyEvent,type Event} from './journey';
 import {OBJECT_NAMES} from './signals';
 import {routine,SOCIAL_SECONDS,VISIT_SECONDS,mayVisit,visitFinished} from './behavior';
-import {type Save,advanceClock,clockHands,complete,accepts,mood,clamp,tomorrow} from './care';
+import {type Save,type HeldTool,advanceClock,clockHands,complete,accepts,mood,clamp,tomorrow} from './care';
 import {LAYOUT,REST_SPOTS,OWNER_SCALE,CAT_SCALE,Navigator,routeStep,moveWithCollision,canStand,distance,roomAt,CAT_RADIUS,OWNER_RADIUS,type Point,type Fixture} from './world';
 import {ApartmentArt} from './room';
 import {installOwner,installCat,ownerKey,type Direction,type OwnerPose,type CatPose} from './sprites';
-export type Tool='hands'|'brush'|'wand'|'cushion'|'mat'|'curtain';
+export type Tool=HeldTool;
 export interface Snapshot{action?:Action;walking:string;pour:{armed:boolean;active:boolean;level:number};view:Prop|'room';owner:Point;cat:Point;ownerPose:OwnerPose;catPose:CatPose;ownerFrame:string;catFrame:string;clock:{minute:number;hour:number};minutes:number;room:string;zoom:number;left:number;top:number;width:number;height:number;seated:boolean;catBehavior:string;tool:Tool;pounces:number;ownerBusy:boolean;catDisplay:Point;play:{id:ToyId;active:boolean;meter:number;rounds:number;ready:boolean;feedback:string;steady:number}}
 export interface Hooks{ready:()=>void;change:(s:Save)=>void;snapshot:(s:Snapshot)=>void;sound:(kind:string)=>void;notice?:(message:string)=>void}
 interface Resident{point:Point;sprite:Phaser.GameObjects.Sprite;shadow:Phaser.GameObjects.Ellipse;path:Point[];direction:Direction;stalled:number;retries:number}
@@ -31,12 +31,12 @@ export class Home extends Phaser.Scene{
  private activeToy:ToyId='wand';private playStarted=0;private playActive=false;private playScore=0;private playFeedback='';private playSteady=0;private lastAim?:{point:Point;time:number};private toyMotion?:{from:Point;to:Point;start:number;duration:number};private roundQuality=0;private roundPending=false;private playCooldown=0;
  private toy:Point={x:430,y:620};private toyUntil=0;private toyReady=0;private toyRevision=0;private consumedToy=0;private pounces=0;private pounce?:{from:Point;to:Point;elapsed:number};
  private sparkles:{x:number;y:number;life:number;color:number}[]=[];private lastRefusal=-3000;
- constructor(state:Save,hooks:Hooks){super('home');this.state=state;this.hooks=hooks;}
+ constructor(state:Save,hooks:Hooks){super('home');this.state=state;this.hooks=hooks;this.tool=state.held.tool;this.activeToy=state.held.toy;}
  create(){
   installOwner(this,this.state.owner);installCat(this,this.state.coat);this.ownerTexture=ownerKey(this.state.owner);this.art=new ApartmentArt(this,LAYOUT,this.state);
   this.owner=this.resident(this.ownerNav.nearest(this.state.ownerPosition),this.ownerTexture,'idle-down-0',OWNER_SCALE);
   this.cat=this.resident(this.catNav.nearest({x:336,y:304}),`cat-${this.state.coat}`,'soft-sit-down-0',CAT_SCALE);
-  this.supports=this.add.graphics().setDepth(209);this.mouseArt=this.add.graphics().setDepth(703.9);this.propArt=this.add.graphics().setDepth(6000);this.ground=this.add.graphics().setDepth(-50);this.marker=this.add.graphics().setDepth(4900);this.effects=this.add.graphics().setDepth(4901);this.animateOwner('idle');this.animateCat('sit');this.resize();this.scale.on('resize',()=>this.resize());this.nextVisit=this.playTime+SOCIAL_SECONDS[this.state.personality]*1000;this.hooks.ready();this.setupCase();
+  this.supports=this.add.graphics().setDepth(209);this.mouseArt=this.add.graphics().setDepth(703.9);this.propArt=this.add.graphics().setDepth(6000);this.ground=this.add.graphics().setDepth(-50);this.marker=this.add.graphics().setDepth(4900);this.effects=this.add.graphics().setDepth(4901);this.animateOwner('idle');this.animateCat('sit');this.resize();this.scale.on('resize',()=>this.resize());this.nextVisit=this.playTime+SOCIAL_SECONDS[this.state.personality]*1000;this.hooks.ready();this.setupCase(true);
  }
  private resident(point:Point,key:string,frame:string,scale:number):Resident{return {point:{...point},sprite:this.add.sprite(point.x,point.y,key,frame).setScale(scale).setOrigin(.5,.94),shadow:this.add.ellipse(point.x,point.y,31,12,0x584c37,.16),path:[],direction:'down',stalled:0,retries:0};}
  sync(state:Save){const decorChanged=JSON.stringify(this.state.equipped)!==JSON.stringify(state.equipped);this.state=state;if(this.art&&decorChanged)this.art.build(state);if(!this.owner)return;const key=ownerKey(state.owner);if(key!==this.ownerTexture){installOwner(this,state.owner);this.ownerTexture=key;this.owner.sprite.setTexture(key);this.animateOwner(this.ownerPose);}if(this.cat.sprite.texture.key!==`cat-${state.coat}`){installCat(this,state.coat);this.cat.sprite.setTexture(`cat-${state.coat}`);this.animateCat(this.catPose);}}
@@ -53,7 +53,7 @@ export class Home extends Phaser.Scene{
   if(id!=='cat')this.reserved=false;
   if(this.caseApproach(id))return;
   if(id in PROPS){this.openProp(id as Prop);return;}if(id.startsWith('discover-')){this.discoverAt(id.slice(9));return;}if(id==='moment'){this.respondMoment();return;}if(id.startsWith('toy-')){this.equipToy(id.slice(4));return;}if(id==='cat'){this.visitCat();return;}if(id==='treat'){this.offerTreat();return;}
-  if(id==='wand'){this.equipToy('wand');return;}if(id==='brush'){this.putDown();const tools=LAYOUT.fixtures.find(f=>f.id==='tools')!;this.goOwner(tools.approach,()=>{this.owner.direction='left';this.ownerTask={kind:'pickup',elapsed:0,duration:650,done:()=>{this.tool=id;this.hooks.sound('tool');}};});return;}
+  if(id==='wand'){this.equipToy('wand');return;}if(id==='brush'){this.putDown();const tools=LAYOUT.fixtures.find(f=>f.id==='tools')!;this.goOwner(tools.approach,()=>{this.owner.direction='left';this.ownerTask={kind:'pickup',elapsed:0,duration:650,done:()=>{this.tool=id;this.changed();this.hooks.sound('tool');}};});return;}
   const f=LAYOUT.fixtures.find(f=>f.id===id);if(!f)return;
   this.goOwner(f.approach,()=>this.useFixture(f));
  }
@@ -63,7 +63,7 @@ export class Home extends Phaser.Scene{
  cancelWalk(){if(this.ownerTask)return;this.owner.path=[];this.ownerArrived=undefined;this.queuedWalk=undefined;this.reserved=false;}
  private nearestFixture(){return LAYOUT.fixtures.filter(f=>!['wall','plantTable'].includes(f.kind)).sort((a,b)=>distance(this.owner.point,a.approach)-distance(this.owner.point,b.approach))[0];}
  get view(){return this.inspection||'room';}
- openProp(id:Prop){if(this.ownerTask)return;this.headingTo=PROPS[id].name;this.reserved=false;this.putDown();this.goOwner(PROPS[id].approach,()=>{if(id==='fridge')this.applyCase('read');this.inspection=id;this.setPaused(true);this.drawProp();this.hooks.sound('tool');});}
+ openProp(id:Prop){if(this.ownerTask)return;this.headingTo=PROPS[id].name;this.reserved=false;if(this.pourActive)this.releaseCare();this.pourArmed=false;this.playActive=false;this.goOwner(PROPS[id].approach,()=>{if(id==='fridge')this.applyCase('read');this.inspection=id;this.setPaused(true);this.drawProp();this.hooks.sound('tool');});}
  closeProp(){this.inspection=undefined;this.propArt.clear();this.setPaused(false);this.resize();}
  private drawProp(){if(!this.inspection)return;const g=this.propArt,p=PROPS[this.inspection].point;g.clear();const r=(x:number,y:number,w:number,h:number,c:number)=>{g.fillStyle(c);g.fillRect(p.x+x,p.y+y,w,h);};
   if(this.inspection==='cabinet'){r(-148,-170,296,340,0x806244);r(-140,-162,280,324,0xc4a274);r(-134,-151,268,297,0xa98860);for(let i=0;i<5;i++){r(-133,-110+i*58,266,5,0xe1c392);r(-133,-105+i*58,266,4,0x785d41);}r(-154,-160,8,320,0xd6b889);r(146,-160,8,320,0xd6b889);g.fillStyle(0x9c7b52);g.fillPoints([{x:p.x-154,y:p.y-160},{x:p.x-188,y:p.y-143},{x:p.x-188,y:p.y+145},{x:p.x-154,y:p.y+160}],true);g.fillPoints([{x:p.x+154,y:p.y-160},{x:p.x+188,y:p.y-143},{x:p.x+188,y:p.y+145},{x:p.x+154,y:p.y+160}],true);g.fillStyle(0xd4b67d);for(const x of [-155,151])for(const y of [-100,105])g.fillRect(p.x+x,p.y+y,4,12);}
@@ -169,7 +169,7 @@ export class Home extends Phaser.Scene{
 
  private applyCase(action:MysteryAction,value=0){const result=act(this.state,action,value);this.state=result.state;this.changed();if(result.message)this.hooks.notice?.(result.message);if(result.success)this.casePayoff();return result.success;}
  startDay(){if(this.cat)this.setupCase();}
- private setupCase(){this.putDown();this.catArrived=undefined;this.catTask=undefined;this.reserved=false;this.visitUntil=0;this.caseRest=5000;if(this.state.mystery.solved)return;const kind=this.state.mystery.kind;this.goCat(kind==='sunbeam'?{x:304,y:240}:kind==='rattle'?{x:656,y:448}:{x:704,y:640},()=>{this.cat.direction=kind==='mouse'?'right':'up';this.animateCat('sit');});}
+ private setupCase(preserve=false){if(!preserve)this.putDown();this.catArrived=undefined;this.catTask=undefined;this.reserved=false;this.visitUntil=0;this.caseRest=5000;if(this.state.mystery.solved)return;const kind=this.state.mystery.kind;this.goCat(kind==='sunbeam'?{x:304,y:240}:kind==='rattle'?{x:656,y:448}:{x:704,y:640},()=>{this.cat.direction=kind==='mouse'?'right':'up';this.animateCat('sit');});}
  private caseApproach(id:string){const m=this.state.mystery;if(m.solved)return false;
   if(id==='cat'&&this.tool==='hands'){this.reserved=true;this.cat.path=[];this.catArrived=undefined;this.goOwner(this.freeNear({x:this.cat.point.x-42,y:this.cat.point.y+12},this.ownerNav),()=>{this.ownerTask={kind:'company',elapsed:0,duration:m.patience===0?2100:900,done:()=>{this.reserved=false;this.applyCase(m.patience===0?'reassure':'cat');this.hooks.sound('company');}};});return true;}
   if(id==='curtain'){this.goOwner({x:384,y:240},()=>{this.putDown();this.tool='curtain';this.applyCase('seat');});return true;}
@@ -178,10 +178,10 @@ export class Home extends Phaser.Scene{
   if(id==='bed-clue'&&m.kind==='mouse'&&!m.mouse.recovered){this.goOwner({x:688,y:640},()=>{this.applyCase('bed');this.hooks.sound('mouse-bell');if(this.tool==='wand')this.pullMouse();});return true;}
   return false;
  }
- takeSupport(id:'sage'|'felt'){if(!this.state.owned.includes(id)||this.ownerTask)return;this.headingTo=id==='sage'?'the window cushion':'the felt bowl mat';this.goOwner(PROPS.cabinet.approach,()=>{this.tool=id==='sage'?'cushion':'mat';this.hooks.sound('tool');this.hooks.notice?.(id==='sage'?'Carry the cushion to a welcoming perch. Tap or drop it on the window seat.':'Carry the felt mat to the ringing bowl. Tap or drop it underneath.');});}
+ takeSupport(id:'sage'|'felt'){if(!this.state.owned.includes(id)||this.ownerTask)return;this.headingTo=id==='sage'?'the window cushion':'the felt bowl mat';this.goOwner(PROPS.cabinet.approach,()=>{this.tool=id==='sage'?'cushion':'mat';this.changed();this.hooks.sound('tool');this.hooks.notice?.(id==='sage'?'Carry the cushion to a welcoming perch. Tap or drop it on the window seat.':'Carry the felt mat to the ringing bowl. Tap or drop it underneath.');});}
  placeSupport(point:Point){const tool=this.tool;if(tool!=='cushion'&&tool!=='mat')return;const correct=tool==='cushion'?distance(point,{x:272,y:176})<65:distance(point,{x:656,y:380})<52;
-  if(!correct){this.applyCase(tool==='cushion'?'cushion':'mat',0);return;}const target=tool==='cushion'?{x:272,y:240}:{x:656,y:416};this.goOwner(target,()=>{this.ownerTask={kind:'place',elapsed:0,duration:800,done:()=>{this.applyCase(tool==='cushion'?'cushion':'mat',1);this.tool='hands';this.hooks.sound('fabric');}};});}
- adjustCurtain(value:number){if(this.tool!=='curtain'||this.ownerTask)return;this.applyCase('shade',Math.round(value*100)/100);if(windowReady(this.state.mystery)){this.tool='hands';this.hooks.notice?.('Light ready. The perch is ready too. Press E or tap Invite your cat.');}}
+  if(!correct){this.applyCase(tool==='cushion'?'cushion':'mat',0);return;}const target=tool==='cushion'?{x:272,y:240}:{x:656,y:416};this.goOwner(target,()=>{this.ownerTask={kind:'place',elapsed:0,duration:800,done:()=>{this.tool='hands';this.applyCase(tool==='cushion'?'cushion':'mat',1);this.hooks.sound('fabric');}};});}
+ adjustCurtain(value:number){if(this.tool!=='curtain'||this.ownerTask)return;this.applyCase('shade',Math.round(value*100)/100);if(windowReady(this.state.mystery)){this.tool='hands';this.changed();this.hooks.notice?.('Light ready. The perch is ready too. Press E or tap Invite your cat.');}}
  private armPour(){this.applyCase('bowl');this.hooks.sound(this.state.mystery.mat?'pour':'bowl-ring');this.pourArmed=true;this.pourLevel=0;this.hooks.notice?.('Hold the pour action, then release at the gold mark on the jug.');}
  startPour(){if(!this.pourArmed||this.ownerTask||this.pourActive)return;this.pourActive=true;this.pourLevel=0;this.owner.direction='up';this.animateOwner('care');}
  releaseCare(){if(!this.pourActive)return;this.pourActive=false;this.state.water=3;this.art.build(this.state);const won=this.applyCase('pour',this.pourLevel);if(won)this.pourArmed=false;else this.hooks.sound(this.state.mystery.mat?'splash':'bowl-ring');}
@@ -196,6 +196,7 @@ export class Home extends Phaser.Scene{
   if(kind==='sunbeam'){const f=LAYOUT.fixtures.find(f=>f.id==='window-seat')!;this.owner.path=this.ownerNav.path(this.owner.point,{x:368,y:240});this.goCat(f.approach,()=>this.mount(f,true));this.hooks.sound('chirp');}
   else if(kind==='rattle'){const f=LAYOUT.fixtures.find(f=>f.id==='water')!;this.state.water=3;this.goCat(f.approach,()=>{this.cat.direction='up';this.startCatTask('drink',2600,()=>{this.finish('drink');this.goCat(this.freeNear({x:this.owner.point.x-35,y:this.owner.point.y+12},this.catNav),()=>this.startCatTask('rub',1800,()=>{}));});});}
   else{const target=this.freeNear(this.state.mystery.mouse,this.catNav);this.goCat(this.freeNear({x:target.x-26,y:target.y},this.catNav),()=>{this.animateCat('pounce');this.pounce={from:{...this.cat.point},to:target,elapsed:0};this.mysteryPounce=()=>{this.gifted=true;this.visitUntil=this.playTime+9000;this.goCat(this.freeNear({x:this.owner.point.x+25,y:this.owner.point.y+12},this.catNav),()=>this.startCatTask('rub',2200,()=>{}));this.hooks.sound('company');};});}
+  this.changed();
  }
  private caseBrain(){if(this.payoffUntil>this.playTime)return true;const m=this.state.mystery;if(m.solved||this.playActive)return false;this.caseRest-=600;if(this.caseRest>0||this.pourActive)return true;this.caseRest=7000;
   const kind=m.kind;this.cat.direction=kind==='mouse'?'right':'up';this.behavior=m.patience===0?'asking for a quiet moment':kind==='sunbeam'?'squinting at the window':kind==='rattle'?'listening to the bowl':'searching for a mouse';
@@ -209,7 +210,7 @@ export class Home extends Phaser.Scene{
   const hand={x:this.owner.point.x+22,y:this.owner.point.y-39};if(this.tool==='cushion'||this.tool==='mat'){g.fillStyle(this.tool==='mat'?0x769c9c:0x91a184);g.fillRoundedRect(hand.x-14,hand.y-5,29,19,4);g.lineStyle(1,0xd4dfbc);g.strokeRoundedRect(hand.x-11,hand.y-2,23,13,3);}
   if(this.pourArmed){g.fillStyle(0xe7dcc0);g.fillRect(hand.x-9,hand.y-15,22,31);g.lineStyle(2,0xa7b5a0);g.strokeRect(hand.x-9,hand.y-15,22,31);const fill=Math.min(100,this.pourLevel)/100*26;g.fillStyle(0x8bbdc1);g.fillRect(hand.x-6,hand.y+12-fill,16,fill);g.lineStyle(2,0xd0a65e);g.lineBetween(hand.x-10,hand.y-8,hand.x+14,hand.y-8);if(this.pourActive){g.lineStyle(3,0xb5dbd6);g.lineBetween(hand.x+13,hand.y+4,656,380);}}
  }
- private changed(){const result=unlock(this.state);this.state=result.state;this.hooks.change(this.state);if(result.names.length)this.hooks.notice?.(`A little more trust · Unlocked: ${result.names.join(', ')}. Look in your Journal.`);}
+ private changed(){this.state.held={tool:this.tool,toy:this.activeToy};const result=unlock(this.state);this.state=result.state;this.hooks.change(this.state);if(result.names.length)this.hooks.notice?.(`A little more trust · Unlocked: ${result.names.join(', ')}. Look in your Journal.`);}
  private discoverAt(id:string){const d=DISCOVERIES.find(d=>d.id===id);if(!d||this.state.adventure.discovered.includes(id))return;this.goOwner(d.approach,()=>{this.ownerTask={kind:'discover',elapsed:0,duration:1300,done:()=>{this.state=discover(this.state,id);this.changed();this.burst(this.owner.point,0xe7c996,12);this.hooks.sound('complete');this.hooks.notice?.(`${d.name} · a small discovery for your Bag! +2 hearts, +1 bond.`);}};});}
  respondMoment(quiet=false){
   const a=this.state.adventure.active;if(!a||this.ownerTask)return;
@@ -241,7 +242,7 @@ export class Home extends Phaser.Scene{
   if(!this.seat)return;this.seat=undefined;this.ownerIdle=0;
   if(this.lap){const from=this.catDisplay();this.lap=false;this.hop={from,to:{...this.cat.point},elapsed:0,done:()=>{this.jumpDisplay=undefined;this.animateCat('sit');}};}
  }
- putDown(){if(this.pourActive)this.releaseCare();this.pourArmed=false;if(this.ownerTask)return;this.tool='hands';this.toyUntil=0;this.playActive=false;this.roundPending=false;this.pounces=0;this.toyMotion=undefined;}
+ putDown(){const previous=this.tool;if(this.pourActive)this.releaseCare();this.pourArmed=false;if(this.ownerTask)return;this.tool='hands';this.toyUntil=0;this.playActive=false;this.roundPending=false;this.pounces=0;this.toyMotion=undefined;if(previous!==this.tool)this.changed();}
  callCat(){
   if(this.lap){this.hooks.sound('company');return;}
   if(this.isSulking()){this.refuse();return;}if(this.catTask||this.hop||this.catSurface||this.playTime-this.lastCall<20000)return;

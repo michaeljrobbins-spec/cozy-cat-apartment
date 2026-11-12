@@ -1,6 +1,6 @@
 import {newMystery,nextMystery,validMystery,type Mystery} from './mystery';
 import {newAdventure,nextAdventure,validAdventure,type Adventure} from './adventure';
-import {newPlayHistory,validPlay,type PlayHistory} from './play';
+import {newPlayHistory,validPlay,TOY_IDS,type ToyId,type PlayHistory} from './play';
 import {newJourney,nextJourney,validJourney,type Journey} from './journey';
 export interface Owner{name:string;hair:number;skin:number;outfit:number}
 export const SAVE_KEY='cozy-cat-apartment:v7';
@@ -11,13 +11,15 @@ export type Need='food'|'water'|'comfort'|'energy'|'play';
 export type Activity='eat'|'drink'|'brush'|'play'|'sleep'|'company';
 export type Mood='content'|'sleepy'|'wary'|'overwhelmed'|'hungry'|'thirsty'|'curious';
 export type Pose='walk'|'sit'|'sleep'|'groom'|'stretch'|'pounce'|'hop'|'eat'|'drink'|'crouch'|'hide';
+export type HeldTool='hands'|'brush'|'wand'|'cushion'|'mat'|'curtain';
 export interface Save {
+ held:{tool:HeldTool;toy:ToyId};
  schema:7;mystery:Mystery;adventure:Adventure;playHistory:PlayHistory;journey:Journey;owner:Owner;minutes:number;ownerPosition:{x:number;y:number};name:string;coat:number;personality:Personality;day:number;actions:number;hearts:number;
  needs:Record<Need,number>;tension:number;food:number;water:number;rewards:Partial<Record<Activity,number>>;
  owned:string[];equipped:Record<string,string>;treats:Record<string,number>;muted:boolean;reducedMotion:boolean;rain:boolean;
 }
 export function newCat(name='Miso',coat=0,personality:Personality='Playful'):Save {
- return {schema:7,mystery:newMystery(),adventure:newAdventure(),playHistory:newPlayHistory(),journey:newJourney(),owner:{name:'Robin',hair:0,skin:1,outfit:0},minutes:480,ownerPosition:{x:368,y:464},name:name.trim().slice(0,24)||'Miso',coat,personality,day:1,actions:0,hearts:6,needs:{food:48,water:52,comfort:58,energy:78,play:48},tension:0,food:1,water:1,rewards:{},owned:['wand','ball','box','sage'],equipped:{toy:'wand'},treats:{salmon:3},muted:false,reducedMotion:false,rain:false};
+ return {held:{tool:'hands',toy:'wand'},schema:7,mystery:newMystery(),adventure:newAdventure(),playHistory:newPlayHistory(),journey:newJourney(),owner:{name:'Robin',hair:0,skin:1,outfit:0},minutes:480,ownerPosition:{x:368,y:464},name:name.trim().slice(0,24)||'Miso',coat,personality,day:1,actions:0,hearts:6,needs:{food:48,water:52,comfort:58,energy:78,play:48},tension:0,food:1,water:1,rewards:{},owned:['wand','ball','box','sage'],equipped:{toy:'wand'},treats:{salmon:3},muted:false,reducedMotion:false,rain:false};
 }
 export const phase=(s:Save)=>s.minutes<720?'Morning':s.minutes<1050?'Afternoon':'Evening';
 export function mood(s:Save):Mood {
@@ -58,8 +60,10 @@ export function readSave(raw:string):Save{
  if(s?.schema===7&&s.mystery===undefined){s.mystery=newMystery(s.day);if(Array.isArray(s.owned)&&!s.owned.includes('sage'))s.owned.push('sage');}
  if(s?.schema===7&&s.adventure===undefined)s.adventure=newAdventure(s.day);
  if(s?.schema===7&&s.playHistory===undefined)s.playHistory=newPlayHistory();
+ if(s?.schema===7&&s.held===undefined)s.held={tool:'hands',toy:'wand'};
  if(s?.schema===7&&s.journey===undefined)s.journey=newJourney(s.day,s.tension);
  if(s?.schema!==7||!validMystery(s.mystery)||s.mystery.day!==s.day||!validAdventure(s.adventure)||s.adventure.day!==s.day||!validPlay(s.playHistory)||!validJourney(s.journey)||s.journey.goalDay!==s.day||!s.owner||typeof s.owner.name!=='string'||!s.owner.name.trim()||s.owner.name.length>24||!int(s.owner.hair,3)||!int(s.owner.skin,4)||!int(s.owner.outfit,3)||!num(s.minutes,1320)||s.minutes<480||!num(s.ownerPosition?.x,2000)||!num(s.ownerPosition?.y,1400)||typeof s.name!=='string'||!s.name.trim()||s.name.length>24||!int(s.coat,5)||!PERSONALITIES.includes(s.personality)||!int(s.day)||s.day<1||!int(s.actions)||!int(s.hearts)||!['food','water','comfort','energy','play'].every(k=>num(s.needs?.[k],100))||!num(s.tension,100)||!int(s.food,3)||!int(s.water,3)||!Array.isArray(s.owned)||!s.owned.every((x:unknown)=>typeof x==='string'&&CATALOG.some(i=>i.id===x&&i.type!=='treat'))||typeof s.muted!=='boolean'||typeof s.reducedMotion!=='boolean'||typeof s.rain!=='boolean')throw Error('Unreadable v7 save');
+ if(!s.held||!['hands','brush','wand','cushion','mat','curtain'].includes(s.held.tool)||!TOY_IDS.includes(s.held.toy)||s.held.tool==='wand'&&!s.owned.includes(s.held.toy)||s.held.tool==='cushion'&&!s.owned.includes('sage')||s.held.tool==='mat'&&!s.owned.includes('felt'))throw Error('Invalid carried item');
  for(const k of ['rewards','equipped','treats'])if(!s[k]||typeof s[k]!=='object'||Array.isArray(s[k]))throw Error('Invalid save record');
  for(const [k,v]of Object.entries(s.rewards))if(!['eat','drink','brush','play','sleep','company'].includes(k)||!int(v,3))throw Error('Invalid rewards');
  for(const [k,v]of Object.entries(s.equipped))if(!s.owned.includes(v)||!CATALOG.some(i=>i.id===v&&i.slot===k))throw Error('Invalid furnishing');
