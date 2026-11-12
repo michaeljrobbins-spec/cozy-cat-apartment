@@ -7,11 +7,12 @@
     "v3",
     "v4",
     "v5",
-    "v6"
+    "v6",
+    "v7"
   ],
   "scripts": {
     "dev": "npm run dev --workspace=v1 -- --host 0.0.0.0",
-    "build": "npm run build --workspace=v1 && npm run build --workspace=v2 && npm run build --workspace=v3 && npm run build --workspace=v4 && npm run build --workspace=v5 && npm run build --workspace=v6 && node scripts/build-site.mjs",
+    "build": "npm run build --workspace=v1 && npm run build --workspace=v2 && npm run build --workspace=v3 && npm run build --workspace=v4 && npm run build --workspace=v5 && npm run build --workspace=v6 && npm run build --workspace=v7 && node scripts/build-site.mjs",
     "preview": "vite preview --outDir dist --host 0.0.0.0",
     "test": "vitest run",
     "test:browser": "playwright test",
@@ -19,7 +20,8 @@
     "dev:v3": "npm run dev --workspace=v3 -- --host 0.0.0.0",
     "dev:v4": "npm run dev --workspace=v4 -- --host 0.0.0.0",
     "dev:v5": "npm run dev --workspace=v5 -- --host 0.0.0.0",
-    "dev:v6": "npm run dev --workspace=v6 -- --host 0.0.0.0"
+    "dev:v6": "npm run dev --workspace=v6 -- --host 0.0.0.0",
+    "dev:v7": "npm run dev --workspace=v7 -- --host 0.0.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
