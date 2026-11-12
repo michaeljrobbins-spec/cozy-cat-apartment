@@ -44,3 +44,4 @@ html,body,#app{width:100%;height:100%;overflow:hidden}body{background:#d9d0b8}#s
 #prop-content[data-prop=fridge]{height:285px;overflow-y:auto;overscroll-behavior:contain}
 .world-object.discovery span{display:block;font-size:10px}
 .world-object.discovery span:before{content:'⌕ ';font-size:15px}
+#prop-content .fresh-actions{display:grid;gap:8px;margin-top:14px}#prop-content .fresh-actions button{min-height:44px;padding:8px 10px;border:1px solid #acb995;border-radius:5px;text-align:center}#prop-content .fresh-actions #keep-home{background:#e4ecd8}#prop-content .fresh-actions #confirm-fresh{border-color:#bd8c79;color:#8a5949}#prop-content #start-fresh{display:block;border-bottom:1px solid #c6a58b;margin-top:10px;color:#8a6552}#prop-content .reset-error{color:#945c49;font-size:10px}
