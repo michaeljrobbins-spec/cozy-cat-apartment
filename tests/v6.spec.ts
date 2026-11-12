@@ -41,3 +41,30 @@ test('a new mobile household solves a mystery through world objects and preserve
  test.setTimeout(50000);const context=await browser.newContext({viewport:{width:390,height:844},hasTouch:true,isMobile:true}),page=await context.newPage();try{const failures:string[]=[];page.on('pageerror',e=>failures.push(e.message));await page.addInitScript(()=>{for(let v=1;v<=5;v++)localStorage.setItem(`cozy-cat-apartment:v${v}`,`keep ${v}`);});await page.goto('/v6/');await expect(page).toHaveTitle(/Purrsonal Space/);await page.getByLabel('Your name',{exact:true}).fill('Ari');await page.getByLabel('Their name',{exact:true}).fill('Mochi');await page.getByRole('radio',{name:'Copper bob',exact:true}).check();await page.getByRole('button',{name:'Open the door',exact:false}).click();const stage=page.locator('#stage');await expect(stage).toHaveAttribute('data-view','room');
  const at=async(x:number,y:number)=>{const d=await stage.evaluate(el=>(el as HTMLElement).dataset);return {x:(x-Number(d.cameraX))*Number(d.zoom),y:(y-Number(d.cameraY))*Number(d.zoom)};};const p=await at(192,464);await page.touchscreen.tap(p.x,p.y);await expect.poll(async()=>Number(await stage.getAttribute('data-owner-x')),{timeout:6000}).toBeLessThan(205);await page.locator('#object-cabinet').tap();await expect(stage).toHaveAttribute('data-view','cabinet');await page.screenshot({path:'test-results/v6-mobile-cabinet.png'});await page.getByRole('button',{name:'Take Sage linen cushion',exact:true}).tap();await expect(stage).toHaveAttribute('data-tool','cushion');await page.locator('#hud-play').tap();await expect(stage).toHaveAttribute('data-tool','hands',{timeout:9000});await page.locator('#object-curtain').tap();await expect(stage).toHaveAttribute('data-tool','curtain');for(let i=0;i<3;i++)await page.locator('#hud-play').tap();await page.locator('#put-down').tap();await page.locator('#object-window-seat').tap();await expect(stage).toHaveAttribute('data-solved','true',{timeout:8000});await expect(stage).toHaveAttribute('data-behavior','watching the window',{timeout:8000});await page.screenshot({path:'test-results/v6-mobile-mystery.png'});const s=await page.evaluate(()=>JSON.parse(localStorage.getItem('cozy-cat-apartment:v6')!));expect(s.owner.name).toBe('Ari');expect(s.owner.hair).toBe(1);expect(s.name).toBe('Mochi');for(let v=1;v<=5;v++)expect(await page.evaluate(v=>localStorage.getItem(`cozy-cat-apartment:v${v}`),v)).toBe(`keep ${v}`);expect(failures).toEqual([]);expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);}finally{await context.close();}
 });
+
+test('clues lead from the window request to the exact cabinet shelf and next action',async({page})=>{
+ const s=newCat();s.ownerPosition={x:112,y:464};await page.addInitScript(s=>{if(!localStorage.getItem('cozy-cat-apartment:v6'))localStorage.setItem('cozy-cat-apartment:v6',JSON.stringify(s));},s);await page.goto('/v6/');
+ await expect(page.locator('#world-clue')).toContainText('Window cushion from the toy cabinet');
+ await expect(page.locator('#object-cabinet')).toHaveClass(/guided/);
+ await page.locator('#world-clue').click();await expect(page.locator('#stage')).toHaveAttribute('data-view','cabinet');
+ await expect(page.locator('[data-use=sage]')).toHaveClass(/needed-item/);
+ await page.locator('[data-use=sage]').click();await expect(page.locator('#world-clue')).toContainText('Place cushion');
+ await page.locator('#hud-play').click();await expect(page.locator('#world-clue')).toContainText('curtain',{timeout:9000});
+ await page.reload();await expect(page.locator('#world-clue')).toContainText('curtain');
+});
+
+test('discovery markers name the interaction and disappear after the find',async({page})=>{
+ const s=newCat();s.ownerPosition={x:688,y:272};await page.addInitScript(s=>{if(!localStorage.getItem('cozy-cat-apartment:v6'))localStorage.setItem('cozy-cat-apartment:v6',JSON.stringify(s));},s);await page.goto('/v6/');
+ await expect(page.locator('#object-discover-tin')).toContainText('Open kitchen tin');await page.locator('#object-discover-tin').click();await expect(page.locator('#object-discover-tin')).toBeHidden({timeout:8000});
+});
+
+for(const kind of ['rattle','mouse'] as const)test(`${kind} clues identify the exact tool on mobile`,async({page})=>{
+ await page.setViewportSize({width:390,height:844});const s=newCat();s.mystery.kind=kind;s.ownerPosition={x:112,y:464};if(kind==='rattle')s.owned.push('felt');else s.mystery.clues=['bed'];
+ await page.addInitScript(s=>localStorage.setItem('cozy-cat-apartment:v6',JSON.stringify(s)),s);await page.goto('/v6/');const item=kind==='rattle'?'felt':'wand';await expect(page.locator('#world-clue')).toContainText(kind==='rattle'?'Felt bowl mat':'Ribbon wand');
+ await page.locator('#world-clue').click();await expect(page.locator('#stage')).toHaveAttribute('data-view','cabinet');await expect(page.locator(`[data-use=${item}]`)).toHaveClass(/needed-item/);await page.screenshot({path:`test-results/v6-${kind}-guided-mobile.png`});
+});
+
+test('a request for space does not send the owner toward the cat',async({page})=>{
+ const s=newCat();s.mystery.solved=true;s.tension=90;await page.addInitScript(s=>localStorage.setItem('cozy-cat-apartment:v6',JSON.stringify(s)),s);await page.goto('/v6/');
+ await expect(page.locator('#world-clue')).toContainText('step away');await expect(page.locator('#world-clue')).toBeDisabled();
+});

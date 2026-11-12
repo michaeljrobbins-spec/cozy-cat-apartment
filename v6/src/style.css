@@ -36,3 +36,11 @@ html,body,#app{width:100%;height:100%;overflow:hidden}body{background:#d9d0b8}#s
 #close-prop{bottom:auto}#prop-content[data-prop=phone]{height:287px;overflow-y:auto;overscroll-behavior:contain;padding-right:5px}#prop-content[data-prop=fridge] h2{font-size:21px;margin:4px 0 9px}#prop-content[data-prop=fridge] p{margin:7px 0}.fridge-photos{margin-top:10px}.cabinet-slots strong{font-size:9px}.cabinet-slots small{font-size:8px}.photo-scene{height:40px;display:block;position:relative;overflow:hidden;background:#bed1be}.photo-scene img{position:absolute;bottom:0;left:1px;width:47px;height:37px;z-index:1}.photo-scene.sunbeam{background:linear-gradient(90deg,transparent 47%,#f6e7c2 47%,#f6e7c2 53%,transparent 53%),linear-gradient(0deg,#b9c7aa 45%,#f6e7c2 45%,#f6e7c2 50%,#a9cbce 50%)}.photo-scene.rattle{background:#d7dbbc}.photo-scene.mouse{background:#d8bb95}.photo-scene svg{position:absolute;bottom:0;right:0;width:21px;height:20px;z-index:2;color:#78a5aa}.photo-scene.rattle svg{width:16px;fill:#a9cbce}
 /* Room objects keep their tap targets even when the cat walks in front. */
 #objects .world-object:not(.cat-object){z-index:4}#objects .cat-object{z-index:2}#cat-thoughts{pointer-events:none}
+/* A named next action replaces unexplained glints. Keep it usable off-camera too. */
+#world-clue{position:absolute;top:12px;left:50%;transform:translateX(-50%);z-index:10;width:max-content;max-width:calc(100% - 24px);padding:10px 15px;border:1px solid #c5ad70;border-radius:12px;background:#fff7dfed;color:#4b5842;font-size:12px;line-height:1.5;text-align:left;box-shadow:0 3px 12px #514e2720}
+#world-clue[data-actionable=true]:after{content:' · Tap to go';font-weight:bold;color:#607344}
+.world-object.guided{outline:3px solid #ffe6a0;outline-offset:3px;box-shadow:0 0 18px #ffe6a0!important}
+#prop-content .needed-item{background:#fff0bb;border:2px solid #8b9d65;border-radius:6px}
+#prop-content[data-prop=fridge]{height:285px;overflow-y:auto;overscroll-behavior:contain}
+.world-object.discovery span{display:block;font-size:10px}
+.world-object.discovery span:before{content:'⌕ ';font-size:15px}

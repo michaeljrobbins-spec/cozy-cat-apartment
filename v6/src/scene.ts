@@ -200,7 +200,7 @@ export class Home extends Phaser.Scene{
  private drawCase(){const m=this.state.mystery,g=this.effects;if(m.kind==='sunbeam'||m.photos.sunbeam){const shade=m.kind==='sunbeam'?m.shade:.6;g.fillStyle(0xc7967c,.95);g.fillRect(176,40,13,88);g.fillRect(419-Math.round(shade*180),40,13+Math.round(shade*180),88);g.lineStyle(1,0xe0baa0,.75);for(let x=425-Math.round(shade*180);x<432;x+=7)g.lineBetween(x,43,x,124);if(!m.solved&&m.kind==='sunbeam'){this.ground.fillStyle(0xffe5a3,(1-shade)*.25);this.ground.fillTriangle(256,210,480,330,336,370);}}
   if(m.cushion||m.photos.sunbeam){this.supports.fillStyle(0x7b936e);this.supports.fillRoundedRect(249,157,48,23,5);this.supports.lineStyle(2,0xbccd9d);this.supports.strokeRoundedRect(252,160,42,17,4);}
   if(m.mat||m.photos.rattle){this.ground.fillStyle(0x769c9c);this.ground.fillRoundedRect(634,364,60,36,5);this.ground.lineStyle(1,0xaec9bd);this.ground.strokeRoundedRect(638,368,52,28,4);}
-  if(m.kind==='mouse'&&!m.solved){this.mouseArt.setDepth(m.mouse.x<742?m.mouse.y-.1:703.9);this.drawToy(this.mouseArt,'mouse',m.mouse);if(m.clues.includes('bed')){g.fillStyle(0xe9d4a3,.6);g.fillRect(737,651,3,9);g.fillRect(734,654,9,3);}}
+  if(m.kind==='mouse'&&!m.solved){this.mouseArt.setDepth(m.mouse.x<742?m.mouse.y-.1:703.9);this.drawToy(this.mouseArt,'mouse',m.mouse);}
   const hand={x:this.owner.point.x+22,y:this.owner.point.y-39};if(this.tool==='cushion'||this.tool==='mat'){g.fillStyle(this.tool==='mat'?0x769c9c:0x91a184);g.fillRoundedRect(hand.x-14,hand.y-5,29,19,4);g.lineStyle(1,0xd4dfbc);g.strokeRoundedRect(hand.x-11,hand.y-2,23,13,3);}
   if(this.pourArmed){g.fillStyle(0xe7dcc0);g.fillRect(hand.x-9,hand.y-15,22,31);g.lineStyle(2,0xa7b5a0);g.strokeRect(hand.x-9,hand.y-15,22,31);const fill=Math.min(100,this.pourLevel)/100*26;g.fillStyle(0x8bbdc1);g.fillRect(hand.x-6,hand.y+12-fill,16,fill);g.lineStyle(2,0xd0a65e);g.lineBetween(hand.x-10,hand.y-8,hand.x+14,hand.y-8);if(this.pourActive){g.lineStyle(3,0xb5dbd6);g.lineBetween(hand.x+13,hand.y+4,656,380);}}
  }
@@ -354,7 +354,7 @@ this.sparkles=this.sparkles.filter(s=>s.life>0);for(const s of this.sparkles){s.
   if(this.seat?.surface&&!this.lap){const a=this.seat.surface;g.fillStyle(0x7f9272);g.fillRect(a.x-18,a.y-35,36,22);g.fillStyle(0xe7dab6);g.fillRect(a.x-15,a.y-32,29,16);g.fillStyle(0x9eab85);g.fillRect(a.x-1,a.y-32,2,16);}
   const hand={x:this.owner.point.x+(this.owner.direction==='left'?-22:22),y:this.owner.point.y-39};
   if(this.tool==='brush'){const stroke=this.ownerTask?.kind==='brush'?Math.sin(this.playTime/130)*7:0;g.fillStyle(0x846e4a);g.fillRect(hand.x,hand.y+stroke,4,20);g.fillStyle(0xb6b58e);g.fillRect(hand.x-6,hand.y-8+stroke,17,14);g.fillStyle(0x77835f);for(let i=0;i<4;i++)g.fillRect(hand.x-5+i*4,hand.y-9+stroke,2,5);}
-  for(const d of DISCOVERIES){if(this.state.adventure.discovered.includes(d.id))continue;const p=d.spot,shine=this.state.reducedMotion?.7:.6+Math.sin(this.playTime/400)*.3;g.fillStyle(0xffe4a2,shine);g.fillRect(p.x-1,p.y-5,3,12);g.fillRect(p.x-5,p.y-1,12,3);}
+
   if(this.state.adventure.unlocks.includes('blanket')){const floor=this.ground;floor.fillStyle(0xd7bb9a);floor.fillRect(340,668,56,32);floor.lineStyle(2,0xf3dfba);floor.strokeRect(344,672,48,24);}
   if(this.state.adventure.active?.kind==='lost')this.drawToy(g,'mouse',{x:265,y:440});
   if(this.gifted&&this.visitUntil>this.playTime){const p=this.catDisplay();this.drawToy(g,this.state.mystery.kind==='mouse'&&this.state.mystery.solved?'mouse':'ball',{x:p.x+12,y:p.y-14},.9);}
