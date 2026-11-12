@@ -1,4 +1,4 @@
-# Little windows · Cozy Cat Apartment
+# Purrsonal Space · Cozy Cat Apartment
 
 A gentle, mobile-friendly pixel-art browser game about caring for a cat in a small city apartment. Create a cat, learn their personality, and spend hearts on a cozy home. Days advance through activities; nothing deteriorates while the game is closed.
 
@@ -11,7 +11,7 @@ npm ci
 npm run dev
 ```
 
-The development server serves v1. `npm run build` type-checks and builds the complete site into `dist/`; `npm run preview` serves the version landing page and `/v1/` locally.
+The default development server serves v1. Use `npm run dev:v7` for the latest version. `npm run build` type-checks and builds the complete site into `dist/`; `npm run preview` serves the landing page and all seven versions locally.
 
 If the default npm cache is not writable in a managed environment, use `npm ci --cache /tmp/cozy-cat-npm-cache`.
 
@@ -27,13 +27,13 @@ Browser tests use `/usr/bin/chromium`; set `CHROMIUM_PATH` to a different Chromi
 
 ## GitHub Pages
 
-In repository **Settings → Pages → Build and deployment**, select **GitHub Actions**. The included workflow builds and deploys on pushes to `main`, or through **Run workflow**. It publishes the landing page at the repository's Pages root and v1 at `v1/`. Relative asset URLs support both repository and custom-domain Pages sites. No backend, API keys, or runtime secrets are required.
+In repository **Settings → Pages → Build and deployment**, select **GitHub Actions**. The included workflow builds and deploys on pushes to `main`, or through **Run workflow**. It publishes the landing page at the repository's Pages root and each game at `v1/` through `v7/`. Relative asset URLs support both repository and custom-domain Pages sites. No backend, API keys, or runtime secrets are required.
 
 This checkout's local build does not itself publish the site. Push the changes to run the deployment workflow.
 
 ## Version policy
 
-Each major version lives in its own folder with its own package manifest, source, assets, and build configuration. To add v2, create `v2/`, register it in root `workspaces`, add it to the root build command, and add a link to the root landing page. The site assembler includes all built `v<number>/dist` folders. Keep earlier versions and their builds available; do not redirect or overwrite v1.
+Each major version lives in its own folder with its own package manifest, source, assets, and build configuration. For a new major version, create its own folder, register it in root `workspaces`, add it to the root build command, and add a link to the root landing page. The site assembler includes all built `v<number>/dist` folders. Keep earlier versions and their builds available; do not redirect or overwrite v1.
 
 V1 saves under `cozy-cat-apartment:v1` in `localStorage`. Each major version must use a different key. Saves contain a schema number and are validated on load. Invalid saves are not overwritten until the player explicitly starts fresh; an original backup can be downloaded. Settings also offers a save download for safekeeping (v1 does not include a restore/import interface). Saves stay on the same browser/device and disappear if site data is cleared. Private browsing or blocked/full storage may prevent persistence; the game reports this and remains playable for the session.
 
@@ -162,3 +162,16 @@ v6 polish and validation: object interactions take priority when the cat walks i
 V6 request guidance: named search labels replace the unexplained discovery crosses. The current next step highlights its room object and appears on the fridge and phone; tap the clue to approach even when the object is off-camera. Required cabinet shelves are marked for the window cushion, felt bowl mat and ribbon wand. Clues update after placement, curtain changes, investigation, reassurance and reload, including returning mysteries, everyday care and optional shared moments.
 
 V6 fresh start: open the owner’s phone → Settings → Start fresh. The phone explains the permanent loss of v6 progress and offers Keep this home before a separate Erase v6 and start fresh action. Confirming removes only `cozy-cat-apartment:v6` and reopens character creation; all earlier saves and unrelated browser data remain intact. Autosave is stopped before the page reloads so the discarded home cannot be written back. If storage blocks deletion, the current home stays available and the phone explains the error. Desktop/mobile confirmation, cancellation, blocked deletion, fresh creation and save isolation are covered by browser checks.
+
+
+## v7 · A clearer little day
+
+Run `npm run dev:v7`, or choose **Play v7** on the landing page. v1–v6 retain their original source and saves. v7 uses `cozy-cat-apartment:v7`; the phone’s Settings → Start fresh requires confirmation and erases only that key. Audio and art provenance is in [v7/CREDITS](v7/CREDITS).
+
+The window request is a complete, explicit chain: take **Window cushion** from the toy cabinet, place it on the window seat, draw the curtain until **Light ready**, then **Invite your cat onto the perch**. The visible label is clickable, E uses the same invitation, and ready light cannot accidentally become another curtain adjustment. Furniture hit areas include their visible fronts, including the fridge paper.
+
+Toy timing and laser control stay beside the action during play. Available actions and Put down appear beside the owner, with E/hold/release hints on desktop and tap/hold controls on mobile. Walking and busy states explain what is happening; Stop walking cancels an approach. The fridge checks off specific actions with room locations, and the phone shares those instructions. The compact daily reminder always shows the cat’s request and next step; tapping it walks to that object. A finished day stays visibly complete and offers the bedroom bed for tomorrow, while the cat’s ordinary needs remain visible.
+
+Carried cushions, mats, brushes, curtains and the selected toy survive reloads. Reading the fridge or phone preserves a carried item. Early v7 saves gain a safe empty-hands default. Required shelves are highlighted; an absent cushion or bowl mat can be ordered from the phone. The mouse request specifically requires the Ribbon wand, even when another toy is held. Short feedback appears beside the action instead of covering the window, and optional discovery labels appear only nearby or on focus/hover. Character creation keeps Open the door visible while customization scrolls.
+
+Release validation: all seven production builds and 61 unit tests passed. The full 80-scenario browser regression suite passed, followed by 16 targeted v7/Pages checks after label cleanup and a complete three-catch toy session with the contextual timing display. Checks include fresh desktop/touch first days, the complete window chain and cat payoff, carried-item reloads, the fridge paper hit area, both pointer and keyboard pours, choosing the wrong rescue toy, reassurance recovery, supply ordering, confirmed/cancelled/blocked resets, 320 px and landscape layouts, and opening and rendering every v1–v7 game through its landing-page link below a repository prefix. v1–v6 source folders are unchanged.

@@ -1,4 +1,5 @@
 import type {Save} from './care';
+import {thoughts,THOUGHT_LABELS} from './signals';
 import {caseInfo,lightReady} from './mystery';
 export interface DayStep{id:string;action:string;where:string;target:string;done:boolean;item?:string}
 /** The fridge, phone and room route use the same actual saved prerequisites. */
@@ -23,7 +24,8 @@ export function daySteps(s:Save,tool:string=s.held.tool,toy=s.held.toy):DayStep[
 }
 export function dayDirection(s:Save,tool:string=s.held.tool,toy=s.held.toy){
  const steps=daySteps(s,tool,toy),m=s.mystery;
- const want=m.solved?`${s.name}’s mystery is solved`:m.patience===0?`${s.name} needs reassurance`:m.kind==='sunbeam'?`${s.name} wants a soft, shaded perch`:m.kind==='rattle'?`${s.name} wants a quiet drink`:`${s.name} wants the missing mouse`;
+ const need=thoughts(s,'','')[0];
+ const want=m.solved?(need?`${s.name} wants ${THOUGHT_LABELS[need].toLowerCase()}`:`${s.name} is content`):m.patience===0?`${s.name} needs reassurance`:m.kind==='sunbeam'?`${s.name} wants a soft, shaded perch`:m.kind==='rattle'?`${s.name} wants a quiet drink`:`${s.name} wants the missing mouse`;
  if(m.solved)return {target:'bed',label:'Day complete · Settle in for the night',text:'Bedroom bed · tap to walk there, or keep spending time together.',want,done:steps.length,total:steps.length};
  if(m.patience===0)return {target:'cat',label:tool==='hands'?`Reassure ${s.name}`:'Put your tool down, then reassure your cat',text:'Use Put down beside the owner, then tap your cat for quiet company.',want,done:steps.filter(x=>x.done).length,total:steps.length};
  const next=steps.find(x=>!x.done)!;
